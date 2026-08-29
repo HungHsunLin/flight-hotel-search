@@ -8,6 +8,7 @@
 # 語系/幣別/地區用環境變數控制，預設 zh-TW / TWD / tw：
 #   GFH_LANG=en GFH_CURR=USD ./gflight.sh Taipei Tokyo 2026-10-01 2026-10-05
 D="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=_common.sh
 . "$D/_common.sh"
 
 [ $# -lt 3 ] && { _msg "用法: $(basename "$0") 出發地 目的地 YYYY-MM-DD [回程] [航空公司]" \

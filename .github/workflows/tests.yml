@@ -31,9 +31,9 @@ jobs:
           - { os: ubuntu-latest, python: '3.14' }
           - { os: macos-latest,  python: '3.14' }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
 
@@ -57,6 +57,9 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run shellcheck
-        run: shellcheck --shell=bash --external-sources scripts/*.sh
+        # --source-path=SCRIPTDIR 讓 shellcheck 解析 `. "$D/_common.sh"` 這種帶變數的
+        # 路徑（配合腳本內的 `# shellcheck source=` 指令），這樣它會真的去分析被 source
+        # 的檔案，而不是回報 SC1091 說找不到。比直接把 SC1091 關掉多檢查了一整個檔案。
+        run: shellcheck --shell=bash --external-sources --source-path=SCRIPTDIR scripts/*.sh

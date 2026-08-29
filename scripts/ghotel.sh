@@ -3,6 +3,7 @@
 # 例: ghotel.sh 京都 2026-11-24 2026-11-26 2
 #     GFH_LANG=en GFH_CURR=USD ./ghotel.sh Kanazawa 2026-11-24 2026-11-26 2
 D="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=_common.sh
 . "$D/_common.sh"
 
 [ $# -lt 3 ] && { _msg "用法: $(basename "$0") 地點 YYYY-MM-DD YYYY-MM-DD [成人數]" \
