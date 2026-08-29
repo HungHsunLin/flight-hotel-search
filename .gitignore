@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+err.txt
+.DS_Store
+
+# 本機專屬的 skill 銜接設定（個人化，不公開）
+references/local.md
