@@ -24,6 +24,10 @@ Linux — but those combinations have not been verified.
 ## Quick start
 
 ```bash
+# The default locale is zh-TW (see "Languages and currency"), so set this first
+# or the output comes back in Chinese with TWD prices.
+export GFH_LANG=en
+
 # Round trip, city names cover every airport in the metro area
 scripts/gflight.sh Taipei Tokyo 2026-10-01 2026-10-05
 

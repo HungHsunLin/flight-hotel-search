@@ -20,6 +20,8 @@ GNU/BSD 專屬的 `date` flag，理論上可在較舊的 Python 3.x 與 Linux �
 ## 快速開始
 
 ```bash
+# 預設語系就是 zh-TW，以下不需額外設定；要換成英文或日文介面見「語系與幣別」。
+
 # 來回（用城市名可涵蓋該都會區所有機場）
 scripts/gflight.sh 臺北市 東京都 2026-10-01 2026-10-05
 
@@ -166,7 +168,7 @@ python3 -m unittest discover -s tests -v
 |---|---|
 | `SKILL.md` | Claude Code 載入的 skill 定義，以繁體中文撰寫。 |
 | `SKILL.en.md` | 英文版。**要使用的話把兩個檔名對調**——Claude Code 只讀 `SKILL.md`。 |
-| `evals/evals.json` | skill 的觸發與行為評估，格式為 Claude Code `skill-creator` 所使用。這不是單元測試套件，使用 CLI 腳本也不需要它。 |
+| `evals/evals.json` | skill 的觸發與行為評估，格式為 Claude Code `skill-creator` 所使用。這不是單元測試套件，使用 CLI 腳本也不需要它；其中的 prompt 為中文，且假設台灣出發的旅遊脈絡。 |
 | `references/local.md` | **選用，不進版本庫。** 建立此檔後，`SKILL.md` 會指示 Claude 讀取它。用途是放本機專屬的銜接設定——你自己的哪個 skill 負責把結果寫進行程文件、你的檔案慣例，以及任何不該寫死進公開版本庫的東西。 |
 
 skill 定義刻意不指名要交接給誰：它只說結果應該交給「負責管理那些文件的 skill」。把具體

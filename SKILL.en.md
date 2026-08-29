@@ -255,6 +255,10 @@ through a second path produces duplicate entries and format conflicts.
 Format the results as a clean shortlist (price, timing, rating, your recommendation and the reason
 for it), mark clearly which option you are recommending versus which are alternates, then hand off.
 
+**Machine-specific wiring**: if `references/local.md` exists, read it — it records which skill on
+this machine actually handles the writing, along with the user's own document conventions. That file
+is not in version control, so the published skill assumes no particular skill ecosystem.
+
 ## When something goes wrong
 
 - **"date is in the past"** — the script blocks this and states the reason. Usually the user gave a
