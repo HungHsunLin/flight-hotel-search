@@ -1,0 +1,62 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 這個 workflow 刻意**不執行任何實際查詢**。測試全部跑在 tests/fixtures.py 的合成資料
+# 上，不需要網路。理由有三：
+#   1. 從 CI 對來源網站發送自動化請求，性質與個人在本機執行 CLI 完全不同。
+#   2. 共用的 runner IP 很快就會被限流，測試會變得時好時壞。
+#   3. 這裡要驗證的是「我們的解析邏輯有沒有照設計運作」，那不需要真實回應。
+# 代價是：來源網站改變輸出格式時，CI 仍會全綠而實際查詢回空。那一層只能靠實際使用
+# 時發現，README 的 "Support and maintenance" 有說明。
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: '3.9' }
+          - { os: ubuntu-latest, python: '3.11' }
+          - { os: ubuntu-latest, python: '3.13' }
+          - { os: ubuntu-latest, python: '3.14' }
+          - { os: macos-latest,  python: '3.14' }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Shell syntax
+        run: bash -n scripts/*.sh
+
+      - name: Scripts reject past dates instead of querying
+        shell: bash
+        run: |
+          # 日期防呆用字串比較而非 date(1)，因為 -j 是 BSD 語法、-d 是 GNU 語法。
+          # 這一步確認該防呆在這個平台上真的有攔下來（而不是靜默跳過檢查）。
+          if scripts/gflight.sh Taipei Tokyo 2020-01-01 2>/dev/null; then
+            echo "::error::past-date guard did not trigger"; exit 1
+          fi
+          echo "past-date guard OK"
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shellcheck
+        run: shellcheck --shell=bash --external-sources scripts/*.sh
