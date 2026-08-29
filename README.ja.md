@@ -2,6 +2,8 @@
 
 [English](README.md) · [繁體中文](README.zh-TW.md) · **日本語**
 
+[![tests](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml/badge.svg)](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml)
+
 Google Flights / Google Hotels からリアルタイムの航空券価格とホテル料金を取得します。
 [Claude Code](https://claude.com/claude-code) のスキルとして使えるほか、CLI スクリプト単体
 でも実行できます。
@@ -17,9 +19,10 @@ Google Flights / Google Hotels からリアルタイムの航空券価格とホ�
 
 `bash`、`curl`、`python3`。サードパーティ製パッケージ、API キー、ビルド手順のいずれも不要です。
 
-開発・テスト環境は Python 3.14 / macOS です。バージョン依存の構文は使用しておらず、shell
-スクリプトも GNU/BSD 固有の `date` フラグを避けているため、より古い Python 3.x や Linux でも
-動作するはずですが、これらの組み合わせは未検証です。
+CI で検証済みです：Linux 上の Python 3.9、3.11、3.13、3.14、および macOS 上の 3.14。
+バージョン依存の構文は使用しておらず、shell スクリプトも GNU と BSD で挙動が異なる `date`
+フラグを避けています（CI では、過去日付のガードが各プラットフォームで実際に発火することを
+確認しており、黙って読み飛ばされていないことを保証しています）。
 
 ## クイックスタート
 
@@ -166,7 +169,12 @@ python3 -m unittest discover -s tests -v
 `DEAL` 接尾辞、小さすぎるラベル長上限、`ts` からの通貨欠落、CJK 幅計算の削除）を再導入すると、
 いずれの場合もテストが失敗します。
 
-macOS 上の Python 3.9、3.13、3.14 で検証済みです。
+push および pull request のたびに、CI が Linux と macOS でテストスイート全体を実行します——
+[`.github/workflows/tests.yml`](.github/workflows/tests.yml) を参照してください。CI は
+**実際のクエリを一切実行しません**：共有 CI ランナーから自動化されたリクエストを送ることは、
+個人が手元で CLI を実行するのとは性質が異なりますし、それらの IP はすぐにレート制限を受け、
+テストが不安定になります。その代償として、取得元サイトが出力形式を変更しても CI は緑のまま
+であり、それは実際の利用でしか気づけません。
 
 ## 言語を追加する
 

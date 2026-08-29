@@ -2,6 +2,8 @@
 
 [English](README.md) · **繁體中文** · [日本語](README.ja.md)
 
+[![tests](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml/badge.svg)](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml)
+
 從 Google Flights / Google Hotels 抓即時機票票價與飯店房價。可以當
 [Claude Code](https://claude.com/claude-code) skill 用，也可以單獨執行 CLI 腳本。
 
@@ -14,8 +16,9 @@
 
 `bash`、`curl`、`python3`。無第三方套件、無 API key、不需編譯。
 
-開發與測試環境為 Python 3.14 / macOS。程式碼未使用版本相依語法，shell 腳本也避開了
-GNU/BSD 專屬的 `date` flag，理論上可在較舊的 Python 3.x 與 Linux 執行——但這些組合未經實測。
+已在 CI 上驗證：Linux 搭配 Python 3.9、3.11、3.13、3.14，以及 macOS 搭配 3.14。程式碼未使用
+版本相依語法，shell 腳本也避開了 GNU 與 BSD 之間有差異的 `date` flag（CI 會實際驗證過去日期
+的防呆在每個平台上都真的觸發，而不是被靜默跳過）。
 
 ## 快速開始
 
@@ -145,7 +148,11 @@ python3 -m unittest discover -s tests -v
 把四個歷史 bug 重新植入（被吞掉的 `DEAL` 尾綴、過小的 label 上限、`ts` 漏掉幣別、移除 CJK
 寬度計算），每一個都會讓測試變紅。
 
-已在 macOS 上的 Python 3.9、3.13、3.14 驗證通過。
+每次 push 與 pull request，CI 都會在 Linux 與 macOS 上跑整套測試——見
+[`.github/workflows/tests.yml`](.github/workflows/tests.yml)。CI **不執行任何實際查詢**：
+從共用的 CI runner 發送自動化請求，性質與個人在本機執行 CLI 完全不同，而且那些 IP 很快就會
+被限流，會讓測試變得時好時壞。代價是來源網站改變輸出格式時 CI 仍會全綠，那一層只能靠實際
+使用時發現。
 
 ## 新增語系
 

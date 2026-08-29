@@ -2,6 +2,8 @@
 
 **English** · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md)
 
+[![tests](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml/badge.svg)](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml)
+
 Live airfare and hotel rates from Google Flights / Google Hotels, as a
 [Claude Code](https://claude.com/claude-code) skill — with plain CLI scripts you can also run on
 their own.
@@ -17,9 +19,10 @@ selection.
 
 `bash`, `curl`, `python3`. No third-party packages, no API keys, no build step.
 
-Developed and tested on Python 3.14 / macOS. The code uses no version-specific syntax and the
-shell scripts avoid GNU/BSD-specific `date` flags, so it should run on older Python 3.x and on
-Linux — but those combinations have not been verified.
+Verified in CI on Linux with Python 3.9, 3.11, 3.13 and 3.14, and on macOS with 3.14. The code uses
+no version-specific syntax, and the shell scripts avoid `date` flags that differ between GNU and BSD
+(the CI run asserts the past-date guard actually fires on each platform, rather than being silently
+skipped).
 
 ## Quick start
 
@@ -162,7 +165,12 @@ suite has been verified by mutation testing — reintroducing four historical bu
 `DEAL` suffix, a too-small label cap, dropping the currency from `ts`, and removing the CJK width
 calculation) turns it red each time.
 
-Verified on Python 3.9, 3.13 and 3.14 on macOS.
+CI runs the suite on every push and pull request across Linux and macOS — see
+[`.github/workflows/tests.yml`](.github/workflows/tests.yml). It performs **no live queries**:
+sending automated requests from shared CI runners is a different proposition from a person running
+the CLI locally, and those runners get throttled quickly, which would make the tests flaky. The
+trade-off is that CI stays green when the source site changes its output format; only real use
+catches that.
 
 ## Adding a language
 
