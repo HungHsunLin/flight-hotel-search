@@ -75,7 +75,8 @@ class TestDocumentStructure(unittest.TestCase):
 
     def testHeadingScannerWhenFileHasFencedCodeBlockThenIgnoresCommentsInside(self):
         # Given: SKILL.md 的程式區塊裡有以 # 開頭的 shell 註解
-        raw = open(os.path.join(ROOT, 'SKILL.md'), encoding='utf-8').read()
+        with open(os.path.join(ROOT, 'SKILL.md'), encoding='utf-8') as fh:
+            raw = fh.read()
         self.assertIn('```', raw, 'SKILL.md 應該有圍欄程式區塊，這個測試才有意義')
         # When: 掃描標題
         levels = heading_levels('SKILL.md')
