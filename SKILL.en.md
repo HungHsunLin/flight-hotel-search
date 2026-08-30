@@ -151,6 +151,52 @@ and expand the full plan list — the default view shows "recommended" plans, wh
 the cheapest. Align room type, breakfast, and cancellation terms before comparing, or you are
 comparing different products.
 
+## When the user says "I have a membership with X", enumerate the whole brand
+
+**This is a fork in the procedure, not a footnote.** The normal flow is "search Google for the going
+rate → pick one → open that property's own site". But the moment the user mentions a membership,
+member rates, point rebates and site-exclusive plans follow **the brand, not the individual
+property** — so list every branch that brand has in the target city first, then compare them in one
+pass.
+
+How: open the brand's branch list on its own site (e.g. `viainn.com`) and collect every branch in
+the target city — its slug, plus the booking engine's `code`, which is the `code=` parameter on
+that branch page's 「ご宿泊プランはこちら」 link. (Those branch pages are Japanese whatever your
+own locale is.) Then query member rates branch by branch with the same dates and occupancy.
+
+**Why this is not optional**: measured in Osaka, VIA INN has 8 branches. A Google search for Osaka /
+Umeda surfaced only 2 of them, and the one it did surface (Umeda, NT$14,273, 13㎡) was **the most
+expensive in the entire brand**. The Shinsaibashi branch, which never appeared, was NT$11,064, and
+Prime Shinsaibashi Yotsubashi had a 15㎡ room at a member rate of NT$12,079 — cheaper than Umeda
+and larger. Querying only the one Google handed you recommends the worst option with no sign that
+anything is missing.
+
+One related thing you will hit: sold-out dates. The booking page redirects to `/booking/recommender`
+and says in so many words that no rooms were found. **Read that sentence before declaring it sold
+out** — do not infer it from failing to parse any rooms, because the two look identical.
+
+### Booking pages lazy-load; without scrolling you only see the smallest rooms
+
+Hotel booking engines (tripla and VIA INN's are examples) **render only the first 2 room types**
+initially, and the sort order usually puts the cheapest single room first. The "N results" count the
+page prints is the real total — **when N disagrees with how many rooms you parsed, the page has not
+finished loading**. Repeat `window.scrollTo(0, document.body.scrollHeight)`, wait 2 seconds, and
+continue until the room-size label stops appearing more times.
+
+Both the results count and the room-size label are rendered **in whatever display language you
+loaded the page in** — match on the labels actually present in the page you fetched, never on a
+string hardcoded for one language.
+
+This trap is especially nasty because **the truncated data looks completely normal**: every property
+has room types, prices and member rates — they just all happen to be 12-13㎡. Measured across four
+VIA INN properties in Osaka, without scrolling each showed only 2 single rooms; after scrolling,
+Umeda turned out to have a 17㎡ double and a 23㎡ deluxe twin, and Prime Shinsaibashi Yotsubashi
+two 20㎡ room types. When the user complains the rooms are too small, the ones being dropped are
+precisely the ones they wanted.
+
+**The general rule**: on any page where a stated "N results" disagrees with the number of rows you
+parsed, confirm the page has finished loading before you start comparing prices.
+
 ## Traps (these produce wrong prices with no error at all)
 
 ### The hotel `checkin` / `checkout` parameters are fake
@@ -240,6 +286,16 @@ or the user is clearly comparison shopping — do not let them believe they have
 entirely sufficient for price discovery and date comparison, but it is not the full list. When the
 user wants an exhaustive answer ("list every nonstop option"), state the limitation and switch to a
 browser if needed.
+
+**This limitation does not merely cost completeness — it makes conclusions wrong.** Those 18 are not
+"the best 18 in the area". A single chain often gets only one or two of its properties sampled, and
+the sampled ones are not necessarily the cheap ones. Measured in Osaka, VIA INN has 8 properties;
+Google returned 2, and one of those was the most expensive in the whole brand. The two genuinely
+good-value ones (Shinsaibashi at NT$11,064, Prime Shinsaibashi Yotsubashi with a 15㎡ room at
+NT$12,079) never appeared at all. **Running `ghotel.sh` again just returns the same set — it will
+not fill the gap**, because the gap is not random undersampling; Google's selection logic simply did
+not pick them. The only way to close it is to query the brand's own site, or to search a narrower
+place name ("Shinsaibashi", "Shin-Osaka") instead.
 
 ## Integrating with other skills
 
