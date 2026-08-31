@@ -281,5 +281,93 @@ class TestRendering(unittest.TestCase):
         self.assertIn('¥', gfparse.render(rows, lang='en', symbol='¥'))
 
 
+class TestHotelTotals(unittest.TestCase):
+    """住宿總價的擷取與配對。
+
+    總價是唯一不靠飯店名配對的欄位——節點本身不帶名稱，只能靠版面位置錨定。
+    配對錯誤的後果是「每個數字都合法、但屬於別間飯店」，畫面上完全看不出來，
+    所以這裡的重點不是「有沒有抓到」，而是「有沒有配到正確的那一間」。
+    """
+
+    def testHotelTotalWhenPageHasTotalNodesThenEveryHotelGetsOne(self):
+        for lang in LANGS:
+            with self.subTest(lang=lang):
+                # Given: 一頁含總價節點的飯店結果
+                page = fixtures.as_hotel_page(lang)
+                # When: 解析
+                rows = ghparse.parse(page, lang)
+                # Then: 每一筆都有總價，且晚數讀得到
+                self.assertTrue(all(r['total'] for r in rows))
+                self.assertTrue(all(r['nights'] == fixtures.HOTEL_NIGHTS for r in rows))
+
+    def testHotelTotalWhenTwoHotelsDifferThenEachKeepsItsOwnTotal(self):
+        # Given: 兩張卡片的總價設成一眼可辨的數字，且刻意不等於每晚 × 晚數——
+        # 若用真實比例，配錯時算出來的數字仍會「看起來合理」，測不出錯位。
+        cards = [(price_lab, total, rating_lab)
+                 for (price_lab, _, rating_lab), total
+                 in zip(fixtures.HOTEL_CARDS['zh-TW'], ['11,111', '22,222'])]
+        # When: 解析
+        rows = ghparse.parse(fixtures.as_hotel_page('zh-TW', cards=cards), 'zh-TW')
+        # Then: 每筆總價都留在自己那張卡片上，沒有漂到隔壁
+        self.assertEqual({'範例飯店': 11111, '測試旅館': 22222},
+                         {r['name']: r['total'] for r in rows})
+
+    def testHotelTotalWhenTotalsAreSwappedThenMismatchIsReported(self):
+        # Given: 一頁的總價刻意與每晚房價對不上（模擬版面改動導致配對錯位）
+        cards = [(p, t, r) for (p, _, r), t in
+                 zip(fixtures.HOTEL_CARDS['zh-TW'], ['12,340', '6,170'])]
+        page = fixtures.as_hotel_page('zh-TW', cards=cards)
+        # When: 解析並核帳
+        rows = ghparse.parse(page, 'zh-TW')
+        # Then: 兩筆都被指認出來，而且輸出裡有警告
+        self.assertEqual(2, ghparse.mismatched(rows))
+        self.assertIn('⚠️', ghparse.render(rows, lang='zh-TW'))
+
+    def testHotelTotalWhenCardHasTwoDifferentTotalsThenTheNearerOneWins(self):
+        # Given: 同一張卡片內出現兩個不同的總價節點。
+        # 真實頁面重複的兩筆數值相同，所以「取第一筆」與「取最後一筆」看不出差別——
+        # 必須讓兩筆不同，才測得到 setdefault 的語意（取最靠近價格 label 的那筆）。
+        node = fixtures.HOTEL_TOTAL_NODES['zh-TW']
+        price_lab, _, rating_lab = fixtures.HOTEL_CARDS['zh-TW'][0]
+        page = ('<html><body>'
+                f'<div aria-label="{price_lab}"></div>'
+                + node.format(t='11,111', n=5)
+                + node.format(t='99,999', n=5)
+                + f'<div aria-label="{rating_lab}"></div></body></html>')
+        # When: 解析
+        rows = ghparse.parse(page, 'zh-TW')
+        # Then: 取的是前面那筆，不是後來覆蓋上去的
+        self.assertEqual(11111, rows[0]['total'])
+
+    def testHotelTotalWhenPageHasNoTotalNodesThenParsingStillSucceeds(self):
+        for lang in LANGS:
+            with self.subTest(lang=lang):
+                # Given: 舊版面（只有 aria-label、沒有總價節點）
+                page = fixtures.as_page(fixtures.HOTEL_LABELS[lang])
+                # When: 解析
+                rows = ghparse.parse(page, lang)
+                # Then: 仍解析得出飯店，總價留白而不是硬用乘法頂替
+                self.assertTrue(rows)
+                self.assertTrue(all(r['total'] == 0 for r in rows))
+                self.assertEqual(0, ghparse.mismatched(rows))
+
+    def testHotelNameWhenLabelUsesGreatDealSuffixThenSuffixIsNotSwallowed(self):
+        # Given: 英文大折扣的尾綴是 GREAT DEAL 而不是 DEAL
+        page = fixtures.as_hotel_page('en')
+        # When: 解析
+        rows = ghparse.parse(page, 'en')
+        names = [r['name'] for r in rows]
+        # Then: 名稱乾淨，且因此配得到評分——名稱被污染時會靜默失去評分
+        self.assertIn('Example Hotel', names)
+        self.assertNotIn('Example Hotel GREAT', names)
+        self.assertEqual('4.5', next(r['stars'] for r in rows if r['name'] == 'Example Hotel'))
+
+    def testHotelRenderWhenTotalsExistThenTotalColumnAppears(self):
+        for lang in LANGS:
+            with self.subTest(lang=lang):
+                rows = ghparse.parse(fixtures.as_hotel_page(lang), lang)
+                out = ghparse.render(rows, lang=lang)
+                self.assertIn(locales.get(lang)['ui']['total'], out)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

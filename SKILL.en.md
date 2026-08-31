@@ -114,11 +114,21 @@ python3 scripts/gscan.py hotel Tokyo 2026-12-25 2027-01-05 --nights 3
 
 `--nights` is the length of stay; the scanner pairs the return / checkout date automatically.
 
-**Hotel prices are per night, not the stay total.** Google's default display is the nightly rate
-(taxes and fees included); there is a "total stay" toggle on the page but the scripts read the
-default. So multiply by nights for a budget, and **never divide it by nights** thinking it was a
-total — that mistake has been made in practice and produced a figure five times too low. The true
-total is usually not an exact multiple either, since longer stays often get a discount.
+**`ghotel.sh` reports both the nightly rate and the stay total**, each including taxes and fees.
+The total is read straight off the page (zh 「總價為 $12,067」, en "$381 total", ja 「合計 ￥68,216」)
+rather than multiplied out. **Never divide the nightly rate by nights** thinking it was a total —
+that mistake has been made in practice and produced a figure five times too low.
+
+Measured across 4 queries and 72 hotels (2/3/5/7 nights), **the total always equals nightly x
+nights**, off by only 1-3 units of rounding — any multi-night discount is already baked into that
+nightly average. So the intuition that "long stays get a discount, so the total will not be an exact
+multiple" is wrong. The parser uses the relationship in reverse, as a reconciliation check: a row
+that disagrees means the layout changed and the total was paired with the wrong hotel, and the
+output says so. That check earns its keep because a mispairing produces figures that are all
+individually valid and simply belong to a different hotel — nothing looks wrong.
+
+`gscan.py` shows the median nightly rate only: each date there is a separate query with a fixed
+number of nights, so nightly figures compare across dates more meaningfully than totals would.
 
 **The hotel scan ranks by median nightly rate, not the minimum — deliberately.** The cheapest
 listing is often a hostel or capsule, so one cheap bed makes a genuinely expensive date look like a

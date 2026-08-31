@@ -101,6 +101,10 @@ LOCALES = {
             'price': r'^(?P<name>.+?)，價格 \D{0,4}(?P<price>[\d,]+) 起(?P<rest>.*)$',
             'rating': r'^在「(?P<name>.+?)」的 (?P<reviews>[\d,]+) 則評論中獲得 (?P<stars>[\d.]+) 顆星',
             'deal': r'比市價便宜 (\d+%)',
+        # 總價不在 aria-label 裡，而在一般文字節點，且該節點不帶飯店名。
+        # 用 > < 夾住節點文字比對，不依賴 class 名（CQYfx 這類 class Google 隨時會換）。
+        'total': r'>總價為\s*\D{0,4}(?P<total>[\d,]+)\s*<',
+        'nights': r'>\s*(?P<nights>\d+) 晚\s*[（(]含稅',
         },
         # gnolcc.py 用。SKILL.md 實測：航空公司篩選必須用**該語系介面的寫法**，
         # 送錯語言的名稱 Google 回 0 筆而不是報錯。
@@ -112,10 +116,15 @@ LOCALES = {
             'price': '價格', 'airline': '航空', 'outbound': '去程時段', 'route': '起降',
             'stops': '停', 'duration': '飛行時間', 'nonstop': '直達', 'connecting': '轉機',
             'total_n': '共 {n} 筆', 'lowest': '最低',
-            'nightly': '每晚房價', 'rating': '評分', 'hotel': '飯店', 'note': '備註',
+            'nightly': '每晚房價', 'total': '總價', 'rating': '評分', 'hotel': '飯店',
+            'note': '備註',
             'total_hotels': '共 {n} 間', 'median': '每晚房價中位數', 'range': '每晚房價區間',
-            'hotel_footnote': '（Google 預設顯示的是「每晚房價」，不是住宿總額；'
-                              '總價 ≈ 每晚 × 晚數，但長住常有折扣不會是整數倍）',
+            'total_median': '{n} 晚總價中位數',
+            'total_mismatch': '⚠️ 有 {n} 筆總價與「每晚 × 晚數」對不上——版面可能改過、'
+                              '總價配對到錯誤的飯店。請以每晚房價為準並回報。',
+            'hotel_footnote': '（每晚房價與總價都已含稅金與相關費用。總價取自 Google 頁面本身，'
+                              '實測等於每晚 × 晚數，差異僅來自四捨五入——連泊折扣若存在，'
+                              '早已算進每晚均價裡了）',
             'past_date': '錯誤：{what} {date} 已經是過去的日期（今天是 {today}）。',
             'past_hint': '使用者說的月份如果沒講年份、且那個月今年已經過了，該用明年，不是今年。',
             'depart_date': '出發日', 'start_date': '起始日',
@@ -158,11 +167,16 @@ LOCALES = {
             'nonstop': 'Nonstop',
         },
         'hotel': {
+            # 折扣尾綴有兩種：小折扣是 DEAL、大折扣是 GREAT DEAL（實抓確認，37/50/29%
+            # 那幾筆都是 GREAT DEAL）。漏掉 GREAT 的話它會被當成名稱的一部分，
+            # 產出「HOTEL AMANEK Kumamoto GREAT」這種看起來只是有點怪的名字。
             # 名稱在最後，而 DEAL 尾綴只隔一個空格——用非貪婪加可選尾巴會讓 name 把
             # 'X DEAL 23% less than usual' 整段吃進去。lookahead 才切得乾淨。
-            'price': r'^Prices starting from \D{0,4}(?P<price>[\d,]+), (?P<name>.+?)(?=\s+DEAL\s|$)',
+            'price': r'^Prices starting from \D{0,4}(?P<price>[\d,]+), (?P<name>.+?)(?=\s+(?:GREAT\s+)?DEAL\s|$)',
             'rating': r'^(?P<stars>[\d.]+) out of 5 stars from (?P<reviews>[\d,]+) reviews, (?P<name>.+)$',
             'deal': r'DEAL (\d+%) less than usual',
+        'total': r'>\s*\D{0,4}(?P<total>[\d,]+)\s+total\s*<',
+        'nights': r'>\s*(?P<nights>\d+) nights? with taxes',
         },
         'full_service': ['China Airlines', 'EVA Air', 'STARLUX Airlines', 'Japan Airlines',
                          'All Nippon Airways', 'Cathay Pacific', 'Asiana Airlines',
@@ -173,11 +187,17 @@ LOCALES = {
             'price': 'Price', 'airline': 'Airline', 'outbound': 'Outbound', 'route': 'Route',
             'stops': 'Stop', 'duration': 'Duration', 'nonstop': 'Direct', 'connecting': 'Connect',
             'total_n': '{n} results', 'lowest': 'lowest',
-            'nightly': 'Per night', 'rating': 'Rating', 'hotel': 'Hotel', 'note': 'Note',
+            'nightly': 'Per night', 'total': 'Total', 'rating': 'Rating', 'hotel': 'Hotel',
+            'note': 'Note',
             'total_hotels': '{n} hotels', 'median': 'median nightly', 'range': 'nightly range',
-            'hotel_footnote': '(Google shows the PER-NIGHT rate by default, not the stay total. '
-                              'Total = nightly x nights, though long stays often get a discount '
-                              'and will not be an exact multiple.)',
+            'total_median': 'median {n}-night total',
+            'total_mismatch': 'WARNING: {n} totals disagree with nightly x nights — the page '
+                              'layout may have changed and totals may be paired with the wrong '
+                              'hotel. Trust the nightly rate and report this.',
+            'hotel_footnote': '(Both the nightly rate and the total include taxes and fees. The '
+                              'total is read from the page itself and equals nightly x nights, '
+                              'differing only by rounding — any multi-night discount is already '
+                              'baked into the nightly average.)',
             'past_date': 'Error: {what} {date} is in the past (today is {today}).',
             'past_hint': 'If a month was given with no year and it has already passed, use next year.',
             'depart_date': 'departure date', 'start_date': 'start date',
@@ -221,6 +241,9 @@ LOCALES = {
             'rating': r'^(?P<reviews>[\d,]+) 件の評価で (?P<stars>[\d.]+) つ星（最高は 5 つ星）'
                       r'（(?P<name>.+?)）$',
             'deal': r'通常より (\d+%) お得',
+        # 全形 ￥ (U+FFE5)，不是 ¥ (U+00A5)——實抓頁面確認過，照文法推會寫錯。
+        'total': r'>\s*合計\s*\D{0,4}(?P<total>[\d,]+)\s*<',
+        'nights': r'>\s*(?P<nights>\d+) 泊[（(]税',
         },
         'full_service': ['チャイナ エアライン', 'エバー航空', 'スターラックス航空', '日本航空',
                          '全日空', 'キャセイパシフィック航空', 'アシアナ航空', '大韓航空',
@@ -231,10 +254,16 @@ LOCALES = {
             'price': '料金', 'airline': '航空会社', 'outbound': '往路', 'route': '発着',
             'stops': '経由', 'duration': '所要時間', 'nonstop': '直行', 'connecting': '経由',
             'total_n': '{n} 件', 'lowest': '最安',
-            'nightly': '1泊料金', 'rating': '評価', 'hotel': 'ホテル', 'note': '備考',
+            'nightly': '1泊料金', 'total': '総額', 'rating': '評価', 'hotel': 'ホテル',
+            'note': '備考',
             'total_hotels': '{n} 軒', 'median': '1泊料金の中央値', 'range': '1泊料金の範囲',
-            'hotel_footnote': '（Google の既定表示は「1泊あたりの料金」で、宿泊総額ではありません。'
-                              '総額 ≈ 1泊 × 泊数ですが、連泊割引があるため整数倍にはなりません）',
+            'total_median': '{n}泊総額の中央値',
+            'total_mismatch': '⚠️ {n} 件の総額が「1泊 × 泊数」と一致しません。ページ構造が'
+                              '変わり、総額が別のホテルに紐づいた可能性があります。'
+                              '1泊料金を優先してください。',
+            'hotel_footnote': '（1泊料金・総額とも税・サービス料込みです。総額はページから直接'
+                              '取得した値で、1泊 × 泊数と一致します（差は端数処理のみ）。'
+                              '連泊割引があれば1泊平均に反映済みです）',
             'past_date': 'エラー：{what} {date} は過去の日付です（今日は {today}）。',
             'past_hint': '年を伴わない月の指定で、その月が既に過ぎている場合は翌年を使ってください。',
             'depart_date': '出発日', 'start_date': '開始日',

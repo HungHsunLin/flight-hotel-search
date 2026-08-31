@@ -130,7 +130,8 @@ back; a genuine both-legs round trip was 13,819.
 under `hl=zh-TW`; `中華航空` returns zero under `hl=en`. `locales.py` carries the right list per
 language, and only one airline can be filtered at a time.
 
-**Hotel prices are per night, not the stay total**, and the scanner ranks dates by the **median**
+**Hotel results carry both the nightly rate and the stay total** (taxes and fees included, with
+the total read from the page rather than multiplied out), and the scanner ranks dates by the **median**
 nightly rate rather than the minimum — the cheapest listing is usually a hostel or capsule, so a
 single cheap bed makes a genuinely expensive date look like a bargain.
 
