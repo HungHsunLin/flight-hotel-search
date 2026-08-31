@@ -98,3 +98,59 @@ def as_page(labels):
              '<span aria-label="メニュー"></span>']
     body = ''.join(f'<div aria-label="{lab}"></div>' for lab in labels)
     return '<html><body>' + ''.join(noise) + body + '</body></html>'
+
+
+# --- 飯店總價 --------------------------------------------------------------
+# 總價不在 aria-label 裡，而在一般文字節點，且節點不帶飯店名。以下格式全部實抓確認
+# （ja 用的是全形 ￥ U+FFE5，不是 ¥ U+00A5）。class 名刻意寫成無意義的 a/b —— parser
+# 若哪天改成依賴 class 名比對，這裡就會紅。
+HOTEL_TOTAL_NODES = {
+    'zh-TW': '<div class="a b">總價為 ${t}</div><div class="a">{n} 晚 (含稅金和相關費用)</div>',
+    'en':    '<div class="a b">${t} total</div><div class="a">{n} nights with taxes + fees</div>',
+    'ja':    '<div class="a b">合計 ￥{t}</div><div class="a">{n} 泊（税、サービス料込み）</div>',
+}
+
+# 每張卡片 = (價格 label, 總價數字, 評分 label)。總價一律等於每晚 × 5，這樣核帳
+# 檢查在正常情況下不該觸發。英文第一筆刻意用 GREAT DEAL —— Google 對大折扣用
+# 「GREAT DEAL」、小折扣才用「DEAL」，早期只擋 DEAL 的版本會把 GREAT 吃進飯店名，
+# 連帶讓該筆配不到評分 label（名稱對不上）。
+HOTEL_CARDS = {
+    'zh-TW': [
+        ('範例飯店，價格 $1,234 起 優惠 比市價便宜 25%', '6,170',
+         '在「範例飯店」的 100 則評論中獲得 4.5 顆星'),
+        ('測試旅館，價格 $2,468 起', '12,340',
+         '在「測試旅館」的 2,000 則評論中獲得 4.1 顆星'),
+    ],
+    'en': [
+        ('Prices starting from $123, Example Hotel GREAT DEAL 25% less than usual', '615',
+         '4.5 out of 5 stars from 100 reviews, Example Hotel'),
+        ('Prices starting from $246, Testing Inn', '1,230',
+         '4.1 out of 5 stars from 2,000 reviews, Testing Inn'),
+    ],
+    'ja': [
+        ('サンプルホテル、NT$1,234～ お得 通常より 25% お得', '6,170',
+         '100 件の評価で 4.5 つ星（最高は 5 つ星）（サンプルホテル）'),
+        ('テスト旅館、NT$2,468～', '12,340',
+         '2,000 件の評価で 4.1 つ星（最高は 5 つ星）（テスト旅館）'),
+    ],
+}
+
+HOTEL_NIGHTS = 5
+
+
+def as_hotel_page(lang, nights=HOTEL_NIGHTS, cards=None):
+    """組出接近真實版面的飯店頁。
+
+    與 as_page 的差別在**順序**：總價節點不帶飯店名，parser 只能靠「它前面最近的
+    價格 label」配對，所以卡片必須照真實版面交錯排列（價格 → 總價 → 評分），不能
+    像 as_page 那樣把同類 label 集中在一起。
+
+    總價節點刻意輸出兩次，因為真實頁面每張卡片就是重複兩次。
+    """
+    node = HOTEL_TOTAL_NODES[lang]
+    body = '<div aria-label="搜尋"></div>'
+    for price_lab, total, rating_lab in (cards or HOTEL_CARDS[lang]):
+        body += f'<div aria-label="{price_lab}"></div>'
+        body += node.format(t=total, n=nights) * 2
+        body += f'<div aria-label="{rating_lab}"></div>'
+    return '<html><body>' + body + '</body></html>'
