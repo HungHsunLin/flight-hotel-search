@@ -122,6 +122,8 @@ LOCALES = {
             'note': '備註',
             'total_hotels': '共 {n} 間', 'median': '每晚房價中位數', 'range': '每晚房價區間',
             'total_median': '{n} 晚總價中位數',
+            'omitted_dates': '另有 {n} 個日期未列出，都比上表貴——最貴是 {date} 入住（{price}）。'
+                             '問「哪天划算」時，該避開的那半邊同樣是答案。',
             'nights_mismatch': '⚠️ 要求 {want} 晚，但頁面回的是 {got} 晚——Google 忽略了送出的'
                                '日期，以下是「明天住一晚」的行情，不是你要的區間。'
                                '最常見的原因是入住日超出約 330 天的可訂範圍。',
@@ -201,6 +203,9 @@ LOCALES = {
             'note': 'Note',
             'total_hotels': '{n} hotels', 'median': 'median nightly', 'range': 'nightly range',
             'total_median': 'median {n}-night total',
+            'omitted_dates': '{n} more dates are not listed, all pricier than the rows above — '
+                             'the worst is {date} ({price}). When the question is which day is '
+                             'cheap, the days to avoid are half the answer.',
             'nights_mismatch': 'WARNING: asked for {want} nights, the page returned {got}. '
                                'Google ignored the dates that were sent; the figures below are '
                                'tomorrow-night rates, not the range you asked for. The usual '
@@ -278,6 +283,8 @@ LOCALES = {
             'note': '備考',
             'total_hotels': '{n} 軒', 'median': '1泊料金の中央値', 'range': '1泊料金の範囲',
             'total_median': '{n}泊総額の中央値',
+            'omitted_dates': '他に {n} 件の日付があり、いずれも上表より高額です——最も高いのは '
+                             '{date}（{price}）。「どの日が安いか」を問うとき、避けるべき日も答えの半分です。',
             'nights_mismatch': '⚠️ {want}泊で照会しましたが、ページが返したのは {got}泊です。'
                                '送信した日付が無視されており、以下は「明日1泊」の相場で、'
                                '指定した期間ではありません。多くの場合、チェックイン日が'

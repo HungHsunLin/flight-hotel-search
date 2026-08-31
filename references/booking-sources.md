@@ -41,6 +41,21 @@ grep -n "透過.*預訂\|航空公司$\|\$[0-9],[0-9]" <snapshot.yml>
 
 檔案會存在 `~/.playwright-mcp/`，用 `ls -t | head -1` 拿最新的。
 
+**只抓 aria-label 會漏掉展開後才出現的通路。** 實測華航頁的 Gotogate、虎航頁的 Expedia /
+Mytrip / eDreams 都不在 aria-label 裡。一次實際查詢照這個方法做，得出「這條航線零 OTA」
+的結論——是錯的，重驗後每一頁都有三到四個 OTA。展開之後要改掃 `document.body.innerText`
+的「透過…預訂」句式才完整。
+
+**展開鈕會被 overlay 攔截。** `browser_click` 點「查看其他選項」會 timeout；改用
+`browser_evaluate` 直接對元素呼叫 `el.click()` 就能繞過。
+
+**分段購票標記只在這一層看得到。** 回程選擇頁 find「分段購票」實測 34 筆，而 `curl` 抓的
+搜尋首屏一筆都沒有——`gfparse.py` 也不解析它。所以**腳本輸出沒有這個標記，不代表沒有
+分段購票**。
+
+順帶一個實測到的反直覺情況：OTA 有時會把航空公司的**單一張來回票拆成分段購票**賣。
+Gotogate 的虎航來回 NT$10,974 比官網的 NT$10,622 貴，商品卻更差——多付錢換到兩張獨立票。
+
 ## 怎麼判別官網 vs OTA
 
 Google 在航空公司官網那筆旁邊掛一個**獨立的 badge 元素**，內容是「航空公司」：

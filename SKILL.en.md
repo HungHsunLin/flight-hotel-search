@@ -60,7 +60,7 @@ when you see them:
 
 - **Duration and connections** — saving money but adding a connection and six hours is often a bad trade
 - **Red-eyes** — a 2:00 AM departure looks great on price and costs the user a day plus a night's sleep
-- **Arrival airport** — the cheapest option often lands at the farther airport, adding an hour and a fare to reach the city
+- **Arrival airport** — the cheapest option often lands at the farther airport, adding an hour and a fare to reach the city. Osaka is a sharp case: Itami reaches Umeda in 30 min for ¥640 and Namba in ~35 min, while Kansai needs 45 min and ¥930+ to Namba and 60-70 min and ¥1,150-2,160 to Umeda — a fare that is a few hundred cheaper into KIX can lose the saving on ground transport alone
 - **Hotel rating vs. review count** — 4.5★ from 30 reviews is far weaker evidence than 4.1★ from 2,000
 - **Festivals, public holidays, events in the period** — when a date is unusually expensive or cheap
   there is often a concrete reason (a national holiday, peak foliage or blossom season, a fireworks
@@ -115,7 +115,7 @@ python3 scripts/gscan.py hotel Tokyo 2026-12-25 2027-01-05 --nights 3
 `--nights` is the length of stay; the scanner pairs the return / checkout date automatically.
 
 **`ghotel.sh` reports both the nightly rate and the stay total**, each including taxes and fees.
-The total is read straight off the page (zh 「總價為 $12,067」, en "$381 total", ja 「合計 ￥68,216」)
+The total is read straight off the page (zh 「總價為 \$12,067」, en "\$381 total", ja 「合計 ￥68,216」)
 rather than multiplied out. **Never divide the nightly rate by nights** thinking it was a total —
 that mistake has been made in practice and produced a figure five times too low.
 
@@ -175,9 +175,9 @@ that branch page's 「ご宿泊プランはこちら」 link. (Those branch page
 own locale is.) Then query member rates branch by branch with the same dates and occupancy.
 
 **Why this is not optional**: measured in Osaka, VIA INN has 8 branches. A Google search for Osaka /
-Umeda surfaced only 2 of them, and the one it did surface (Umeda, NT$14,273, 13㎡) was **the most
-expensive in the entire brand**. The Shinsaibashi branch, which never appeared, was NT$11,064, and
-Prime Shinsaibashi Yotsubashi had a 15㎡ room at a member rate of NT$12,079 — cheaper than Umeda
+Umeda surfaced only 2 of them, and the one it did surface (Umeda, NT\$14,273, 13㎡) was **the most
+expensive in the entire brand**. The Shinsaibashi branch, which never appeared, was NT\$11,064, and
+Prime Shinsaibashi Yotsubashi had a 15㎡ room at a member rate of NT\$12,079 — cheaper than Umeda
 and larger. Querying only the one Google handed you recommends the worst option with no sign that
 anything is missing.
 
@@ -270,6 +270,11 @@ Flag this proactively rather than just reporting the price. The saving buys that
 usually do not realise they are taking it on. A single-carrier through fare typically costs 30-40%
 more — that difference is the insurance premium.
 
+**The scripts do not surface that label.** `gfparse.py` does not parse it and the table has no
+column for it, so **not seeing the marker is not evidence that there is none**. Avoid the situation
+at the source instead: reach for `gnolcc.py` when the user cares — its airline filter applies to
+both legs — and open the browser layer to confirm any particular itinerary.
+
 ### Google has no room size
 
 When the user asks how big the room is, do not look for it in Google's data — the field does not
@@ -321,11 +326,19 @@ browser if needed.
 "the best 18 in the area". A single chain often gets only one or two of its properties sampled, and
 the sampled ones are not necessarily the cheap ones. Measured in Osaka, VIA INN has 8 properties;
 Google returned 2, and one of those was the most expensive in the whole brand. The two genuinely
-good-value ones (Shinsaibashi at NT$11,064, Prime Shinsaibashi Yotsubashi with a 15㎡ room at
-NT$12,079) never appeared at all. **Running `ghotel.sh` again just returns the same set — it will
-not fill the gap**, because the gap is not random undersampling; Google's selection logic simply did
-not pick them. The only way to close it is to query the brand's own site, or to search a narrower
-place name ("Shinsaibashi", "Shin-Osaka") instead.
+good-value ones (Shinsaibashi at NT\$11,064, Prime Shinsaibashi Yotsubashi with a 15㎡ room at
+NT\$12,079) never appeared at all.
+
+**The 18 rotate between runs.** The same query (Osaka, identical dates) run three times returned
+sets differing by 7 of 18 properties, with the median nightly rate moving across NT\$1,830 / 1,839 /
+1,931. A single query's median therefore carries roughly **5% sampling noise** — do not treat it as
+a precise budget figure; run it two or three times and take the median of the medians if precision
+matters.
+
+Rotation is **not** the same as eventually filling the gap. Whether a property like VIA INN
+Shinsaibashi ever surfaces on some later rotation is untested — what rotates is the sample, which
+guarantees nothing about covering the population. To actually close the gap, still query the
+brand's own site or search a narrower place name ("Shinsaibashi", "Shin-Osaka").
 
 ## Integrating with other skills
 
