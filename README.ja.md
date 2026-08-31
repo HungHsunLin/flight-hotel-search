@@ -4,6 +4,9 @@
 
 [![tests](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml/badge.svg)](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml)
 
+[変更履歴](CHANGELOG.md) —— 以前のコピーに含まれていた、実測により誤りと判明した
+記述も含みます。
+
 Google Flights / Google Hotels からリアルタイムの航空券価格とホテル料金を取得します。
 [Claude Code](https://claude.com/claude-code) のスキルとして使えるほか、CLI スクリプト単体
 でも実行できます。

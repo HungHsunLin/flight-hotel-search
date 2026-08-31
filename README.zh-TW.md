@@ -4,6 +4,8 @@
 
 [![tests](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml/badge.svg)](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml)
 
+[變更紀錄](CHANGELOG.md) —— 包含早期複本裡那些後來被實測推翻的敘述。
+
 從 Google Flights / Google Hotels 抓即時機票票價與飯店房價。可以當
 [Claude Code](https://claude.com/claude-code) skill 用，也可以單獨執行 CLI 腳本。
 
