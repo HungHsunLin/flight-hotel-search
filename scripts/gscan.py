@@ -122,6 +122,13 @@ def main():
     for i, r in enumerate(res[:a.top], 1):
         print(f"{P(str(i), 5)} {P(SYM + format(r['price'], ','), 11, '>')}  "
               f"{P(r['out'], 12)} {P(r['back'], 12)} {r['detail']}")
+    # 表格只列最便宜的 --top 筆，最貴的那幾天會整個消失——而「哪天最貴」正是
+    # 「哪天划算」的另一半答案。統計列雖有最高值，但看不出是哪一天。
+    if len(res) > a.top:
+        w = res[-1]
+        print(U['omitted_dates'].format(n=len(res) - a.top, date=w['out'],
+                                        price=SYM + format(w['price'], ',')))
+
     v = [r['price'] for r in res]
     print(f"\n{U['dates_with_data'].format(ok=len(res), all=len(days))} | "
           f"{U['lowest']} {SYM}{min(v):,} | {U['highest']} {SYM}{max(v):,} | "
