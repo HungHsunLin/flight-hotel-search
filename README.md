@@ -4,6 +4,9 @@
 
 [![tests](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml/badge.svg)](https://github.com/HungHsunLin/flight-hotel-search/actions/workflows/tests.yml)
 
+[Changelog](CHANGELOG.md) — including the statements in earlier copies that
+turned out to be wrong.
+
 Live airfare and hotel rates from Google Flights / Google Hotels, as a
 [Claude Code](https://claude.com/claude-code) skill — with plain CLI scripts you can also run on
 their own.
