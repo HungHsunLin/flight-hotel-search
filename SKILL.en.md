@@ -115,7 +115,7 @@ python3 scripts/gscan.py hotel Tokyo 2026-12-25 2027-01-05 --nights 3
 `--nights` is the length of stay; the scanner pairs the return / checkout date automatically.
 
 **`ghotel.sh` reports both the nightly rate and the stay total**, each including taxes and fees.
-The total is read straight off the page (zh 「總價為 $12,067」, en "$381 total", ja 「合計 ￥68,216」)
+The total is read straight off the page (zh 「總價為 \$12,067」, en "\$381 total", ja 「合計 ￥68,216」)
 rather than multiplied out. **Never divide the nightly rate by nights** thinking it was a total —
 that mistake has been made in practice and produced a figure five times too low.
 
@@ -175,9 +175,9 @@ that branch page's 「ご宿泊プランはこちら」 link. (Those branch page
 own locale is.) Then query member rates branch by branch with the same dates and occupancy.
 
 **Why this is not optional**: measured in Osaka, VIA INN has 8 branches. A Google search for Osaka /
-Umeda surfaced only 2 of them, and the one it did surface (Umeda, NT$14,273, 13㎡) was **the most
-expensive in the entire brand**. The Shinsaibashi branch, which never appeared, was NT$11,064, and
-Prime Shinsaibashi Yotsubashi had a 15㎡ room at a member rate of NT$12,079 — cheaper than Umeda
+Umeda surfaced only 2 of them, and the one it did surface (Umeda, NT\$14,273, 13㎡) was **the most
+expensive in the entire brand**. The Shinsaibashi branch, which never appeared, was NT\$11,064, and
+Prime Shinsaibashi Yotsubashi had a 15㎡ room at a member rate of NT\$12,079 — cheaper than Umeda
 and larger. Querying only the one Google handed you recommends the worst option with no sign that
 anything is missing.
 
@@ -321,11 +321,11 @@ browser if needed.
 "the best 18 in the area". A single chain often gets only one or two of its properties sampled, and
 the sampled ones are not necessarily the cheap ones. Measured in Osaka, VIA INN has 8 properties;
 Google returned 2, and one of those was the most expensive in the whole brand. The two genuinely
-good-value ones (Shinsaibashi at NT$11,064, Prime Shinsaibashi Yotsubashi with a 15㎡ room at
-NT$12,079) never appeared at all.
+good-value ones (Shinsaibashi at NT\$11,064, Prime Shinsaibashi Yotsubashi with a 15㎡ room at
+NT\$12,079) never appeared at all.
 
 **The 18 rotate between runs.** The same query (Osaka, identical dates) run three times returned
-sets differing by 7 of 18 properties, with the median nightly rate moving across NT$1,830 / 1,839 /
+sets differing by 7 of 18 properties, with the median nightly rate moving across NT\$1,830 / 1,839 /
 1,931. A single query's median therefore carries roughly **5% sampling noise** — do not treat it as
 a precise budget figure; run it two or three times and take the median of the medians if precision
 matters.
