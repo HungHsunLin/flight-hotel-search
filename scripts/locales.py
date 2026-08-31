@@ -111,8 +111,10 @@ LOCALES = {
         'full_service': ['中華航空', '長榮航空', '星宇航空', '日本航空', '全日空航空',
                          '國泰航空', '韓亞航空', '大韓航空', '泰國航空', '新加坡航空'],
         'ui': {
-            'no_data_flight': '(無資料 — 檢查機場代碼或日期)',
-            'no_data_hotel': '(無資料 — 檢查地名或日期)',
+            'no_data_flight': '(無資料 — 可能是 ①機場代碼或日期有誤 ②被限流 '
+                              '③超出約 330 天的可訂範圍。重跑一次已知有效的查詢即可分辨②)',
+            'no_data_hotel': '(無資料 — 可能是 ①地名或日期有誤 ②被限流 '
+                             '③超出約 330 天的可訂範圍。重跑一次已知有效的查詢即可分辨②)',
             'price': '價格', 'airline': '航空', 'outbound': '去程時段', 'route': '起降',
             'stops': '停', 'duration': '飛行時間', 'nonstop': '直達', 'connecting': '轉機',
             'total_n': '共 {n} 筆', 'lowest': '最低',
@@ -120,6 +122,9 @@ LOCALES = {
             'note': '備註',
             'total_hotels': '共 {n} 間', 'median': '每晚房價中位數', 'range': '每晚房價區間',
             'total_median': '{n} 晚總價中位數',
+            'nights_mismatch': '⚠️ 要求 {want} 晚，但頁面回的是 {got} 晚——Google 忽略了送出的'
+                               '日期，以下是「明天住一晚」的行情，不是你要的區間。'
+                               '最常見的原因是入住日超出約 330 天的可訂範圍。',
             'total_mismatch': '⚠️ 有 {n} 筆總價與「每晚 × 晚數」對不上——版面可能改過、'
                               '總價配對到錯誤的飯店。請以每晚房價為準並回報。',
             'hotel_footnote': '（每晚房價與總價都已含稅金與相關費用。總價取自 Google 頁面本身，'
@@ -140,7 +145,8 @@ LOCALES = {
             'rank': '排名', 'median_col': '中位數', 'depart_col': '出發', 'checkin_col': '入住',
             'return_col': '回/退', 'content_col': '內容',
             'dates_with_data': '{ok}/{all} 個日期有資料', 'highest': '最高', 'spread': '價差',
-            'throttle_warn': '注意：{n} 個日期沒回資料，可能是限流而非真的無航班/無房',
+            'throttle_warn': '注意：{n} 個日期沒回資料。可能是限流、也可能超出約 330 天的'
+                             '可訂範圍——都不代表那幾天真的沒航班/沒房。縮小範圍分批重跑可分辨。',
         },
     },
 
@@ -182,8 +188,12 @@ LOCALES = {
                          'All Nippon Airways', 'Cathay Pacific', 'Asiana Airlines',
                          'Korean Air', 'Thai Airways', 'Singapore Airlines'],
         'ui': {
-            'no_data_flight': '(no data - check airport codes or dates)',
-            'no_data_hotel': '(no data - check place name or dates)',
+            'no_data_flight': '(no data - could be (1) wrong airport codes or dates, '
+                              '(2) throttling, or (3) beyond the ~330-day booking horizon. '
+                              'Re-run a query known to work to tell (2) apart.)',
+            'no_data_hotel': '(no data - could be (1) a wrong place name or date, '
+                             '(2) throttling, or (3) beyond the ~330-day booking horizon. '
+                             'Re-run a query known to work to tell (2) apart.)',
             'price': 'Price', 'airline': 'Airline', 'outbound': 'Outbound', 'route': 'Route',
             'stops': 'Stop', 'duration': 'Duration', 'nonstop': 'Direct', 'connecting': 'Connect',
             'total_n': '{n} results', 'lowest': 'lowest',
@@ -191,6 +201,10 @@ LOCALES = {
             'note': 'Note',
             'total_hotels': '{n} hotels', 'median': 'median nightly', 'range': 'nightly range',
             'total_median': 'median {n}-night total',
+            'nights_mismatch': 'WARNING: asked for {want} nights, the page returned {got}. '
+                               'Google ignored the dates that were sent; the figures below are '
+                               'tomorrow-night rates, not the range you asked for. The usual '
+                               'cause is a check-in beyond the ~330-day booking horizon.',
             'total_mismatch': 'WARNING: {n} totals disagree with nightly x nights — the page '
                               'layout may have changed and totals may be paired with the wrong '
                               'hotel. Trust the nightly rate and report this.',
@@ -215,7 +229,9 @@ LOCALES = {
             'rank': '#', 'median_col': 'Median', 'depart_col': 'Depart', 'checkin_col': 'Check-in',
             'return_col': 'Ret/Out', 'content_col': 'Detail',
             'dates_with_data': '{ok}/{all} dates returned data', 'highest': 'highest', 'spread': 'spread',
-            'throttle_warn': 'Note: {n} dates returned nothing - likely throttling, not genuinely sold out',
+            'throttle_warn': 'Note: {n} dates returned nothing. Could be throttling, or those '
+                             'dates may be beyond the ~330-day booking horizon - neither means '
+                             'they are genuinely sold out. Re-run a narrower range to tell.',
         },
     },
 
@@ -249,8 +265,12 @@ LOCALES = {
                          '全日空', 'キャセイパシフィック航空', 'アシアナ航空', '大韓航空',
                          'タイ国際航空', 'シンガポール航空'],
         'ui': {
-            'no_data_flight': '(データなし — 空港コードまたは日付を確認)',
-            'no_data_hotel': '(データなし — 地名または日付を確認)',
+            'no_data_flight': '(データなし — ①空港コードや日付の誤り ②レート制限 '
+                              '③約330日の予約可能範囲を超過、のいずれか。'
+                              '有効と分かっているクエリを再実行すれば②を切り分けられます)',
+            'no_data_hotel': '(データなし — ①地名や日付の誤り ②レート制限 '
+                             '③約330日の予約可能範囲を超過、のいずれか。'
+                             '有効と分かっているクエリを再実行すれば②を切り分けられます)',
             'price': '料金', 'airline': '航空会社', 'outbound': '往路', 'route': '発着',
             'stops': '経由', 'duration': '所要時間', 'nonstop': '直行', 'connecting': '経由',
             'total_n': '{n} 件', 'lowest': '最安',
@@ -258,6 +278,10 @@ LOCALES = {
             'note': '備考',
             'total_hotels': '{n} 軒', 'median': '1泊料金の中央値', 'range': '1泊料金の範囲',
             'total_median': '{n}泊総額の中央値',
+            'nights_mismatch': '⚠️ {want}泊で照会しましたが、ページが返したのは {got}泊です。'
+                               '送信した日付が無視されており、以下は「明日1泊」の相場で、'
+                               '指定した期間ではありません。多くの場合、チェックイン日が'
+                               '約330日の予約可能範囲を超えていることが原因です。',
             'total_mismatch': '⚠️ {n} 件の総額が「1泊 × 泊数」と一致しません。ページ構造が'
                               '変わり、総額が別のホテルに紐づいた可能性があります。'
                               '1泊料金を優先してください。',
@@ -280,7 +304,9 @@ LOCALES = {
             'rank': '順位', 'median_col': '中央値', 'depart_col': '出発', 'checkin_col': 'チェックイン',
             'return_col': '復路/退室', 'content_col': '内容',
             'dates_with_data': '{ok}/{all} 日分のデータ取得', 'highest': '最高', 'spread': '価格差',
-            'throttle_warn': '注意：{n} 日分が空です。実際に満室/無便ではなく制限の可能性があります',
+            'throttle_warn': '注意：{n} 日分が空です。レート制限か、約330日の予約可能範囲を'
+                             '超えている可能性があり、いずれも「実際に満室/無便」ではありません。'
+                             '範囲を狭めて再実行すると切り分けられます。',
         },
     },
 }

@@ -362,6 +362,39 @@ class TestHotelTotals(unittest.TestCase):
         self.assertNotIn('Example Hotel GREAT', names)
         self.assertEqual('4.5', next(r['stars'] for r in rows if r['name'] == 'Example Hotel'))
 
+    def testRenderWhenReturnedNightsDifferFromRequestedThenWarnsBeforeTheTable(self):
+        for lang in LANGS:
+            with self.subTest(lang=lang):
+                # Given: 頁面回的是 1 晚，但呼叫端要的是 5 晚
+                #（真實情境：入住日超出約 330 天，Google 靜默退回單晚行情）
+                rows = ghparse.parse(fixtures.as_hotel_page(lang, nights=1), lang)
+                # When: 帶著「要求 5 晚」render
+                out = ghparse.render(rows, lang=lang, expect_nights=5)
+                # Then: 有警告，而且在表頭之前——18 行資料後面的警告等於不存在
+                U = locales.get(lang)['ui']
+                warn = U['nights_mismatch'].format(want=5, got=1)
+                self.assertIn(warn, out)
+                self.assertLess(out.index(warn), out.index(U['nightly']))
+
+    def testRenderWhenReturnedNightsMatchRequestedThenStaysSilent(self):
+        for lang in LANGS:
+            with self.subTest(lang=lang):
+                # Given: 頁面回的晚數與要求一致
+                rows = ghparse.parse(fixtures.as_hotel_page(lang, nights=5), lang)
+                # When / Then: 不該有任何警告
+                out = ghparse.render(rows, lang=lang, expect_nights=5)
+                self.assertNotIn(locales.get(lang)['ui']['nights_mismatch'][:12], out)
+
+    def testRenderWhenExpectNightsIsNotGivenThenSkipsTheNightsCheck(self):
+        # Given: 舊呼叫端沒有傳 expect_nights，頁面回的是 1 晚
+        rows = ghparse.parse(fixtures.as_hotel_page('zh-TW', nights=1), 'zh-TW')
+        # When: 不帶 expect_nights render
+        out = ghparse.render(rows, lang='zh-TW')
+        # Then: 不出現晚數警告——沒有要求晚數就無從比對，硬猜只會變成雜訊。
+        # 只斷言這一條，不是「完全沒有警告」：這份 fixture 的總價仍是每晚 × 5，
+        # 總價對帳警告本來就該響，把它一起擋掉會誤殺另一個正確的檢查。
+        self.assertNotIn(locales.get('zh-TW')['ui']['nights_mismatch'][:12], out)
+
     def testHotelRenderWhenTotalsExistThenTotalColumnAppears(self):
         for lang in LANGS:
             with self.subTest(lang=lang):

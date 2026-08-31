@@ -141,6 +141,11 @@ and many regional OTAs never appear. "Cheapest on Google" is not "cheapest avail
 **Only the first screen is server-rendered** — about 20-24 flights and 18-20 hotels. That is plenty
 for price discovery, but it is not an exhaustive list.
 
+**There is a booking horizon at roughly 330 days**, and hotels cross it dangerously. Flights past it
+return nothing; hotels return a normal-looking page of **one-night** rates instead of the range you
+asked for. `ghotel.sh` reconciles the nights the page reports against the nights requested and warns
+above the table, and queries more than 300 days out print an advisory.
+
 ## Tests
 
 ```bash

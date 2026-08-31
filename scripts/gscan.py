@@ -57,6 +57,11 @@ def scan_hotel(place, day, nights):
                               'gl': REGION, 'curr': CURR, 'ts': ts}), LANG)
     if not rows:
         return None
+    # 超出可訂範圍時 Google 靜默回「明天住一晚」的行情，頁面完全正常。把它當有效資料
+    # 會直接汙染中位數排序——那份排行看起來合理但整個是錯的。寧可少一個日期。
+    # 落掉的日期會併進結尾的 throttle_warn，那句話同時提到限流與可訂範圍兩種可能。
+    if rows[0]['nights'] and rows[0]['nights'] != nights:
+        return None
     med = int(statistics.median([r['price'] for r in rows]))
     b = rows[0]
     # 用中位數當排序鍵而非最低價：最低價常是青旅/膠囊，某天冒出一間便宜床位

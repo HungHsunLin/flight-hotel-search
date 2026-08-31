@@ -52,3 +52,36 @@ _check_not_past() {
     return 1
   fi
 }
+
+# 距今天數。用 python3 算而不是 date：`date -j` 是 BSD、`date -d` 是 GNU，寫死任一種
+# 在另一個平台上會靜默失敗（見上面 _check_not_past 的同類註解）。腳本本來就依賴
+# python3，所以沒有新增相依。
+_days_out() {
+  python3 -c 'import sys
+from datetime import date
+y, m, d = (int(x) for x in sys.argv[1].split("-"))
+print((date(y, m, d) - date.today()).days)' "$1" 2>/dev/null
+}
+
+# 超出可訂範圍時 Google 不會報錯：機票回空清單，**飯店則靜默退回「明天住一晚」的行情**，
+# 頁面看起來完全正常。實測（2026-08 量測，臺北→大阪 / 大阪飯店）：
+#   304 天後 機票剩 3 筆 ・ 317 天後 剩 1 筆、飯店仍正確回 5 晚
+#   331 天後 機票 0 筆   ・ 345 天後 飯店已退回 1 晚
+# 所以在 300 天就先示警——那時資料已經開始稀疏，早於「完全查不到」的邊界。
+_check_horizon() {
+  local n; n="$(_days_out "$1")"
+  [ -z "$n" ] && return 0
+  if [ "$n" -gt 300 ]; then
+    _msg "注意：$1 距今 ${n} 天。實測約 300 天後資料開始變稀疏、約 330 天後機票查無資料，飯店則會靜默退回單晚行情。" \
+          "Note: $1 is ${n} days out. Measured: results thin past ~300 days, flights return nothing past ~330, and hotels silently fall back to a one-night rate." >&2
+  fi
+}
+
+# 兩個日期相差幾天（住幾晚）。同樣用 python3，理由見 _days_out。
+_days_between() {
+  python3 -c 'import sys
+from datetime import date
+a = date(*(int(x) for x in sys.argv[1].split("-")))
+b = date(*(int(x) for x in sys.argv[2].split("-")))
+print((b - a).days)' "$1" "$2" 2>/dev/null
+}
