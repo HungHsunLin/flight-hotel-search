@@ -158,9 +158,12 @@ LOCALES = {
             'nonstop': 'Nonstop',
         },
         'hotel': {
+            # 折扣尾綴有兩種：小折扣是 DEAL、大折扣是 GREAT DEAL（實抓確認，37/50/29%
+            # 那幾筆都是 GREAT DEAL）。漏掉 GREAT 的話它會被當成名稱的一部分，
+            # 產出「HOTEL AMANEK Kumamoto GREAT」這種看起來只是有點怪的名字。
             # 名稱在最後，而 DEAL 尾綴只隔一個空格——用非貪婪加可選尾巴會讓 name 把
             # 'X DEAL 23% less than usual' 整段吃進去。lookahead 才切得乾淨。
-            'price': r'^Prices starting from \D{0,4}(?P<price>[\d,]+), (?P<name>.+?)(?=\s+DEAL\s|$)',
+            'price': r'^Prices starting from \D{0,4}(?P<price>[\d,]+), (?P<name>.+?)(?=\s+(?:GREAT\s+)?DEAL\s|$)',
             'rating': r'^(?P<stars>[\d.]+) out of 5 stars from (?P<reviews>[\d,]+) reviews, (?P<name>.+)$',
             'deal': r'DEAL (\d+%) less than usual',
         },
