@@ -284,6 +284,26 @@ the cheapest was 14㎡ while two properties costing 30% more were only 10㎡ —
 essentially uncorrelated, so checking price alone leads to a wrong recommendation. For reference,
 10-12㎡ is standard for Japanese business hotels and 16㎡+ counts as spacious.
 
+### Past the booking horizon, hotels silently return a one-night rate
+
+Measured boundary (August 2026, Taipei to Osaka / Osaka hotels): at **304 days out** flights
+returned 3 rows, at **317 days** 1 row, at **331 days** none. Hotels still returned a correct
+5-night figure at 317 days and had **fallen back to 1 night by 345**.
+
+Flights fail honestly with an empty list. **Hotels do not** — the page comes back full of
+normal-looking hotels and prices that are simply one-night rates. Measured: a 2027-10-13 request
+for 5 nights returned 1 night, and the per-night column looked entirely unremarkable while being
+off by a factor of five.
+
+`ghotel.sh` now passes the requested number of nights to the parser for reconciliation and warns
+**above the table** when they disagree — a warning printed below 18 rows of data may as well not
+exist. `gscan.py` drops such a date as no-data instead: letting a one-night rate into the median
+ranking produces a date ranking that reads as perfectly sensible and is entirely wrong.
+
+Queries more than 300 days out print an advisory. That threshold is deliberately earlier than the
+point where data disappears, because between 300 and 330 days the results merely thin out — and a
+shrinking sample is much easier to mistake for a real price signal than an empty one is.
+
 ### Google is not the whole market
 
 Google lists partners it has deals with. Flash sales on budget carriers' own sites and many regional
