@@ -322,10 +322,18 @@ browser if needed.
 the sampled ones are not necessarily the cheap ones. Measured in Osaka, VIA INN has 8 properties;
 Google returned 2, and one of those was the most expensive in the whole brand. The two genuinely
 good-value ones (Shinsaibashi at NT$11,064, Prime Shinsaibashi Yotsubashi with a 15㎡ room at
-NT$12,079) never appeared at all. **Running `ghotel.sh` again just returns the same set — it will
-not fill the gap**, because the gap is not random undersampling; Google's selection logic simply did
-not pick them. The only way to close it is to query the brand's own site, or to search a narrower
-place name ("Shinsaibashi", "Shin-Osaka") instead.
+NT$12,079) never appeared at all.
+
+**The 18 rotate between runs.** The same query (Osaka, identical dates) run three times returned
+sets differing by 7 of 18 properties, with the median nightly rate moving across NT$1,830 / 1,839 /
+1,931. A single query's median therefore carries roughly **5% sampling noise** — do not treat it as
+a precise budget figure; run it two or three times and take the median of the medians if precision
+matters.
+
+Rotation is **not** the same as eventually filling the gap. Whether a property like VIA INN
+Shinsaibashi ever surfaces on some later rotation is untested — what rotates is the sample, which
+guarantees nothing about covering the population. To actually close the gap, still query the
+brand's own site or search a narrower place name ("Shinsaibashi", "Shin-Osaka").
 
 ## Integrating with other skills
 
