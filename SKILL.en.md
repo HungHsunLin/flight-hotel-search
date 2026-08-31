@@ -60,7 +60,7 @@ when you see them:
 
 - **Duration and connections** — saving money but adding a connection and six hours is often a bad trade
 - **Red-eyes** — a 2:00 AM departure looks great on price and costs the user a day plus a night's sleep
-- **Arrival airport** — the cheapest option often lands at the farther airport, adding an hour and a fare to reach the city
+- **Arrival airport** — the cheapest option often lands at the farther airport, adding an hour and a fare to reach the city. Osaka is a sharp case: Itami reaches Umeda in 30 min for ¥640 and Namba in ~35 min, while Kansai needs 45 min and ¥930+ to Namba and 60-70 min and ¥1,150-2,160 to Umeda — a fare that is a few hundred cheaper into KIX can lose the saving on ground transport alone
 - **Hotel rating vs. review count** — 4.5★ from 30 reviews is far weaker evidence than 4.1★ from 2,000
 - **Festivals, public holidays, events in the period** — when a date is unusually expensive or cheap
   there is often a concrete reason (a national holiday, peak foliage or blossom season, a fireworks
@@ -269,6 +269,11 @@ changes are priced separately.
 Flag this proactively rather than just reporting the price. The saving buys that risk, and users
 usually do not realise they are taking it on. A single-carrier through fare typically costs 30-40%
 more — that difference is the insurance premium.
+
+**The scripts do not surface that label.** `gfparse.py` does not parse it and the table has no
+column for it, so **not seeing the marker is not evidence that there is none**. Avoid the situation
+at the source instead: reach for `gnolcc.py` when the user cares — its airline filter applies to
+both legs — and open the browser layer to confirm any particular itinerary.
 
 ### Google has no room size
 
