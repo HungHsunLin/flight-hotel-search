@@ -85,7 +85,15 @@ def mismatched(rows):
                if r['total'] and abs(r['total'] - r['price'] * n) > max(3, n))
 
 
-def render(rows, lang=None, symbol=None):
+def render(rows, lang=None, symbol=None, expect_nights=0):
+    """expect_nights 是呼叫端**要求**的晚數，用來抓 Google 靜默忽略日期的情況。
+
+    超出可訂範圍時 Google 不回錯誤，而是退回「明天住一晚」的行情，頁面長得完全
+    正常。實測 2027-08-11（345 天後）要求 5 晚、回的是 1 晚；只看每晚房價完全
+    看不出異常，會把單晚行情當成整段住宿的報價。
+
+    警告必須印在表格**前面**：18 行資料之後的警告等同不存在。
+    """
     _, L = locales.resolve(lang)
     U = L['ui']
     sym = symbol or L['symbol']
@@ -97,11 +105,15 @@ def render(rows, lang=None, symbol=None):
     has_total = any(r['total'] for r in rows)
     nights = rows[0]['nights']
 
+    out = []
+    if expect_nights and nights and nights != expect_nights:
+        out.append(U['nights_mismatch'].format(want=expect_nights, got=nights) + '\n')
+
     head = P(U['nightly'], 11, '>') + '  '
     if has_total:
         head += P(U['total'], 11, '>') + '  '
     head += f"{P(U['rating'], 13)} {P(U['hotel'], 36)} {U['note']}"
-    out = [head, '-' * (91 if has_total else 78)]
+    out += [head, '-' * (91 if has_total else 78)]
 
     for r in rows:
         stars = f"{r['stars']}* ({r['reviews']})" if r['stars'] else ''
@@ -132,5 +144,9 @@ if __name__ == '__main__':
     lang = os.environ.get('GFH_LANG')
     if '--lang' in sys.argv:
         lang = sys.argv[sys.argv.index('--lang') + 1]
+    want = 0
+    if '--expect-nights' in sys.argv:
+        want = int(sys.argv[sys.argv.index('--expect-nights') + 1])
     sym = locales.symbol_for(os.environ.get('GFH_CURR'))
-    print(render(parse(sys.stdin.read(), lang), lang=lang, symbol=sym))
+    print(render(parse(sys.stdin.read(), lang), lang=lang, symbol=sym,
+                 expect_nights=want))

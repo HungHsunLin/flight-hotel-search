@@ -10,6 +10,7 @@ D="$(cd "$(dirname "$0")" && pwd)"
                         "Usage: $(basename "$0") PLACE YYYY-MM-DD YYYY-MM-DD [ADULTS]"; exit 1; }
 for ARG in "$2" "$3"; do _check_date_format "$ARG" || exit 1; done
 _check_not_past "$2" "$(_msg 入住日 'check-in date')" || exit 1
+_check_horizon "$2"
 
 # 幣別必須傳進 ts：實測 URL 的 curr= 對 Hotels **完全無效**，真正生效的是 ts protobuf
 # 裡的幣別欄位。少傳這個參數，不管 curr= 寫什麼都固定回 TWD 報價。
@@ -21,9 +22,13 @@ if [ -z "$TS" ]; then
   exit 1
 fi
 
+# 把要求的晚數傳給 parser 對帳：超出可訂範圍時 Google 會靜默改回單晚行情，
+# 而那頁的每晚房價單看完全正常，不比對晚數就發現不了。
+NIGHTS=$(_days_between "$2" "$3")
 Q=$(python3 "$D/locales.py" hotel_query "$GFH_LANG" "$1")
 curl -sL -A "$GFH_UA" \
   --get --data-urlencode "q=$Q" --data-urlencode "hl=$GFH_LANG" \
   --data-urlencode "gl=$GFH_REGION" --data-urlencode "curr=$GFH_CURR" \
   --data-urlencode "ts=$TS" \
-  'https://www.google.com/travel/search' | python3 "$D/ghparse.py"
+  'https://www.google.com/travel/search' \
+  | python3 "$D/ghparse.py" --expect-nights "$NIGHTS"

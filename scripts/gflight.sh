@@ -15,6 +15,7 @@ D="$(cd "$(dirname "$0")" && pwd)"
                         "Usage: $(basename "$0") FROM TO YYYY-MM-DD [RETURN] [AIRLINE]"; exit 1; }
 _check_date_format "$3" || exit 1
 _check_not_past "$3" "$(_msg 出發日 'departure date')" || exit 1
+_check_horizon "$3"
 
 Q="Flights from $1 to $2 on $3"; [ -n "$4" ] && Q="$Q through $4"
 [ -n "$5" ] && Q="$Q $5"
