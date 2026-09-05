@@ -22,4 +22,4 @@ Q="Flights from $1 to $2 on $3"; [ -n "$4" ] && Q="$Q through $4"
 curl -sL -A "$GFH_UA" \
   --get --data-urlencode "q=$Q" --data-urlencode "curr=$GFH_CURR" \
   --data-urlencode "hl=$GFH_LANG" --data-urlencode "gl=$GFH_REGION" \
-  'https://www.google.com/travel/flights' | python3 "$D/gfparse.py"
+  'https://www.google.com/travel/flights' | python3 "$D/gfparse.py" ${GFH_TOP:+--top "$GFH_TOP"}

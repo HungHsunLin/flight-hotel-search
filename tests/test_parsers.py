@@ -404,3 +404,97 @@ class TestHotelTotals(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
+
+
+class TestQueryResolution(unittest.TestCase):
+    """0 筆結果的診斷。
+
+    這一組守的是本專案最貴的一種 bug：查詢沒被解析時 Google 回 200 + 空結果，
+    跟「這條航線真的沒航班」在輸出上完全同形。實測兩種成因——目的地被解析成
+    行政區（縣層級 Flights 查不了）、以及整句沒被解析（退回首頁）——頁面 title
+    都帶著答案。
+    """
+
+    def testPageTitleWhenPageHasTitleThenReturnsText(self):
+        # Given 一個帶 title 的頁面
+        page = fixtures.with_title(['x'], fixtures.TITLES['region'])
+        # When 取出 title
+        got = gfparse.page_title(page)
+        # Then 拿到原字串
+        self.assertEqual(got, fixtures.TITLES['region'])
+
+    def testPageTitleWhenTitleHasHtmlEntitiesThenUnescapesThem(self):
+        # Given title 裡有 HTML entity
+        page = '<html><head><title>A &amp; B | &#39;探索&#39;</title></head><body></body></html>'
+        # When 取出 title
+        got = gfparse.page_title(page)
+        # Then entity 已還原，讀者看到的是實際文字
+        self.assertEqual(got, "A & B | '探索'")
+
+    def testPageTitleWhenPageHasNoTitleThenReturnsEmptyString(self):
+        # Given 沒有 title 的頁面
+        page = fixtures.as_page(fixtures.FLIGHT_LABELS['zh-TW'])
+        # When 取出 title
+        got = gfparse.page_title(page)
+        # Then 回空字串而不是拋例外（診斷缺席時要能安靜退場）
+        self.assertEqual(got, '')
+
+    def testPageTitleWhenTitleSpansMultipleLinesThenReturnsWholeText(self):
+        # Given title 跨行——實際頁面的 title 前面就緊貼著壓縮過的 script
+        page = '<html><head><title>範例市到\n樣本縣 | 探索</title></head></html>'
+        # When 取出 title
+        got = gfparse.page_title(page)
+        # Then 換行不會把 title 截斷（少了 re.S 這裡就會漏後半段）
+        self.assertIn('樣本縣', got)
+
+    def testRenderWhenNoRowsAndTitleGivenThenShowsResolvedQuery(self):
+        # Given 查詢回 0 筆，但頁面 title 顯示目的地被解析成行政區
+        # When 產生輸出
+        out = gfparse.render([], lang='zh-TW', title=fixtures.TITLES['region'])
+        # Then 使用者在失敗現場就看得到 Google 認定的是什麼，不必自己另外做實驗
+        self.assertIn(fixtures.TITLES['region'], out)
+
+    def testRenderWhenNoRowsAndTitleAbsentThenOmitsResolvedLine(self):
+        # Given 查詢回 0 筆且拿不到 title
+        # When 產生輸出
+        out = gfparse.render([], lang='zh-TW')
+        # Then 只印原本的無資料訊息，不留一行空的「認定的查詢：」
+        self.assertNotIn('認定的查詢', out)
+
+    def testRenderWhenRowsFoundThenOmitsResolvedLine(self):
+        # Given 查詢有結果
+        rows = gfparse.parse(fixtures.as_page(fixtures.FLIGHT_LABELS['zh-TW']), 'zh-TW')
+        self.assertTrue(rows, '前置條件：fixture 應該解析得出航班')
+        # When 產生輸出，且同時帶著 title
+        out = gfparse.render(rows, lang='zh-TW', title=fixtures.TITLES['resolved'])
+        # Then 成功時不該多出診斷雜訊
+        self.assertNotIn('認定的查詢', out)
+
+    def testRenderWhenNoRowsThenResolvedLineWorksInEveryLocale(self):
+        # Given 三個語系
+        for lang in ('zh-TW', 'en', 'ja'):
+            with self.subTest(lang=lang):
+                # When 0 筆且有 title
+                out = gfparse.render([], lang=lang, title=fixtures.TITLES['unparsed'])
+                # Then 每個語系都印得出 title——診斷刻意不做語系相依的拆解
+                self.assertIn(fixtures.TITLES['unparsed'], out)
+
+    def testNoDataMessageWhenShownThenTellsUserToRetryTheSameQuery(self):
+        # Given 每個語系的無資料訊息
+        # 這條守的是一個被實測推翻的舊建議：原本寫「重跑一次已知有效的查詢即可分辨限流」。
+        # 實測同一句查詢約 18% 機率回空，此時對照組是會過的——換句話說對照組分辨不出來。
+        # 正負兩面都要斷言：只斷言「新說法在」是假綠燈——「同一句」在訊息裡出現兩次，
+        # 把行動指示改回舊版後另一處仍在，測試照樣過（突變測試抓到的）。
+        cases = {
+            'zh-TW': ('重跑**同一句**', '重跑一次已知有效的查詢'),
+            'en': ('re-run THE SAME query', 'Re-run a query known to work'),
+            'ja': ('**同じクエリ**を', '有効と分かっているクエリを再実行すれば'),
+        }
+        for lang, (want, discredited) in cases.items():
+            with self.subTest(lang=lang):
+                # When 取出訊息
+                out = gfparse.render([], lang=lang)
+                # Then 給的是「重跑同一句」
+                self.assertIn(want, out)
+                # Then 而且那個被推翻的建議不能復活
+                self.assertNotIn(discredited, out)

@@ -106,21 +106,47 @@ LOCALES = {
         'total': r'>總價為\s*\D{0,4}(?P<total>[\d,]+)\s*<',
         'nights': r'>\s*(?P<nights>\d+) 晚\s*[（(]含稅',
         },
-        # gnolcc.py 用。SKILL.md 實測：航空公司篩選必須用**該語系介面的寫法**，
-        # 送錯語言的名稱 Google 回 0 筆而不是報錯。
+        # gnolcc.py 用。名稱用該語系介面的寫法最保險，但別當硬規則——舊版這裡寫著
+        # 「送錯語言的名稱 Google 回 0 筆」，2026-09-02 實測是錯的：hl=zh-TW 下
+        # 'China Airlines' 跑 4 次得 5/5/5/0 筆。那個 0 是間歇性回空（見 gnolcc.py
+        # docstring），不是語言不符。
+        # 亞洲線的預設名單。歐美線請改用 full_service_eu（見下），否則會漏掉最便宜的
+        # 選項——實測台北→蘇黎世全歐最低是阿提哈德，其次阿聯酋、土耳其、瑞士、漢莎，
+        # 沒有一家在這份名單裡。gnolcc.py 是逐家序列查詢，名單長度直接等於耗時，
+        # 所以刻意分成兩份而不是合併成一份。
         'full_service': ['中華航空', '長榮航空', '星宇航空', '日本航空', '全日空航空',
                          '國泰航空', '韓亞航空', '大韓航空', '泰國航空', '新加坡航空'],
+        'full_service_eu': ['阿提哈德航空', '阿聯酋航空', '卡達航空', '土耳其航空',
+                            '瑞士航空', '漢莎航空', '荷蘭皇家航空', '法國航空',
+                            '英國航空', '中華航空', '長榮航空'],
         'ui': {
-            'no_data_flight': '(無資料 — 可能是 ①機場代碼或日期有誤 ②被限流 '
-                              '③超出約 330 天的可訂範圍。重跑一次已知有效的查詢即可分辨②)',
-            'no_data_hotel': '(無資料 — 可能是 ①地名或日期有誤 ②被限流 '
-                             '③超出約 330 天的可訂範圍。重跑一次已知有效的查詢即可分辨②)',
+            'no_data_flight': '(無資料 — 可能是 ①機場代碼或日期有誤 ②被限流或間歇性回空 '
+                              '③超出約 330 天的可訂範圍 ④查詢字串沒被解析成一條可查航線。'
+                              '實測同一句查詢約 18% 機率回空，所以要重跑**同一句** 2-3 次'
+                              '才能下結論——換一句「已知有效」的查詢分辨不出來。④見下一行)',
+            'resolved_as': 'Google 認定的查詢：{title}',
+            'query_failed': '⚠️ {airline} 這筆查詢失敗（{error}）——這不是「沒航班」，是請求本身沒送成功。',
+            'no_data_hotel': '(無資料 — 可能是 ①地名或日期有誤 ②被限流或間歇性回空 '
+                             '③超出約 330 天的可訂範圍。重跑**同一句**查詢 2-3 次才能分辨②——'
+                             '換一句「已知有效」的查詢分辨不出來)',
             'price': '價格', 'airline': '航空', 'outbound': '去程時段', 'route': '起降',
             'stops': '停', 'duration': '飛行時間', 'nonstop': '直達', 'connecting': '轉機',
             'total_n': '共 {n} 筆', 'lowest': '最低',
+            'truncated': '\n※ 上表只列出最便宜的 {shown} 筆，另有 {n_more} 筆未顯示。'
+                         '結果依價格排序，而直飛與全服務航空通常較貴、會被排到後面，'
+                         '**不要用上表統計「有幾筆直飛」**——實測曾據此誤判「只剩 2 筆直飛」，'
+                         '全量複查實為 32 筆。要全量請加 --top 60（或設 GFH_TOP=60）。',
+            'dropped_no_price': '⚠️ 另有 {n} 筆航班因 Google 未提供票價而未列入：{detail}。\n'
+                                '   這**不是**「沒有航班」——那些班次存在，只是查不到價格，'
+                                '需另從航空公司官網或 App 確認。實測東京→札幌的全日空 38 班全屬此類。',
             'nightly': '每晚房價', 'total': '總價', 'rating': '評分', 'hotel': '飯店',
             'note': '備註',
             'total_hotels': '共 {n} 間', 'median': '每晚房價中位數', 'range': '每晚房價區間',
+            'small_sample': '⚠️ 只回 {n} 間（正常是 18 間）。樣本這麼小時**中位數不能當行情用**——'
+                            'n=4 的中位數等於第 2、3 筆的平均，任一筆離群就整個歪掉。'
+                            '實測 Ischgl 只回 4 間、中位數 NT$43,327，而同期鄰近的因斯布魯克'
+                            '回 19 間、只要 NT$3,962。請換地名寫法（日文原名／英文名／中國譯名）'
+                            '或改查鄰近城市再比一次。',
             'total_median': '{n} 晚總價中位數',
             'omitted_dates': '另有 {n} 個日期未列出，都比上表貴——最貴是 {date} 入住（{price}）。'
                              '問「哪天划算」時，該避開的那半邊同樣是答案。',
@@ -135,11 +161,13 @@ LOCALES = {
             'past_date': '錯誤：{what} {date} 已經是過去的日期（今天是 {today}）。',
             'past_hint': '使用者說的月份如果沒講年份、且那個月今年已經過了，該用明年，不是今年。',
             'depart_date': '出發日', 'start_date': '起始日',
-            'oneway': '{d} 單程',
+            # 實測：省略回程日不會查到單程票，Google 仍配預設回程按來回計價。
+            'oneway': '{d} 出發（省略回程日，Google 仍按來回計價）',
             'per_airline': '逐家查詢 {n} 家全服務航空',
             'filter_note': '（航空公司篩選同時套用到去程與回程，所以不會出現「去程正常、回程廉航」的混搭）',
             'no_route': '(無資料 — 檢查地名與日期，或這條航線沒有全服務航空直飛)',
-            'no_flights_for': '無航班/無資料：',
+            'no_flights_for': '這幾家沒回資料——可能沒航班，也可能是查詢沒被解析或'
+                              '間歇性回空，別當成結論：',
             'stay_flight': '停留 {n} 晚', 'stay_hotel': '住 {n} 晚',
             'scanning': '掃描 {title}：{start} ~ {end}（{n} 個日期，並行 {w}）',
             'scan_hotel_note': '（飯店依「當日房價中位數」排序 — 最低價常是青旅，不代表整體行情）',
@@ -189,19 +217,41 @@ LOCALES = {
         'full_service': ['China Airlines', 'EVA Air', 'STARLUX Airlines', 'Japan Airlines',
                          'All Nippon Airways', 'Cathay Pacific', 'Asiana Airlines',
                          'Korean Air', 'Thai Airways', 'Singapore Airlines'],
+        'full_service_eu': ['Etihad Airways', 'Emirates', 'Qatar Airways', 'Turkish Airlines',
+                            'SWISS', 'Lufthansa', 'KLM', 'Air France',
+                            'British Airways', 'China Airlines', 'EVA Air'],
         'ui': {
             'no_data_flight': '(no data - could be (1) wrong airport codes or dates, '
-                              '(2) throttling, or (3) beyond the ~330-day booking horizon. '
-                              'Re-run a query known to work to tell (2) apart.)',
+                              '(2) throttling or an intermittent empty response, '
+                              '(3) beyond the ~330-day booking horizon, or (4) the query '
+                              'string was never resolved into a searchable route. Measured: '
+                              'the same query comes back empty ~18% of the time, so re-run '
+                              'THE SAME query 2-3 times before concluding anything - a '
+                              'different "known-good" query cannot tell them apart. '
+                              'For (4) see the next line.)',
+            'resolved_as': 'What Google resolved the query to: {title}',
+            'query_failed': 'WARNING: the query for {airline} failed ({error}). That is not "no flights" - the request itself never completed.',
             'no_data_hotel': '(no data - could be (1) a wrong place name or date, '
-                             '(2) throttling, or (3) beyond the ~330-day booking horizon. '
-                             'Re-run a query known to work to tell (2) apart.)',
+                             '(2) throttling or an intermittent empty response, or '
+                             '(3) beyond the ~330-day booking horizon. Re-run THE SAME '
+                             'query 2-3 times to tell (2) apart - a different '
+                             '"known-good" query cannot.)',
             'price': 'Price', 'airline': 'Airline', 'outbound': 'Outbound', 'route': 'Route',
             'stops': 'Stop', 'duration': 'Duration', 'nonstop': 'Direct', 'connecting': 'Connect',
             'total_n': '{n} results', 'lowest': 'lowest',
+            'truncated': '\nNOTE: only the {shown} cheapest are listed above; {n_more} more not shown. '
+                         'Results are sorted by price and nonstop/full-service flights tend to be pricier, '
+                         'so they are systematically pushed past the cutoff. '
+                         'Do NOT count "how many nonstops" from the table above. Use --top 60 (or GFH_TOP=60).',
+            'dropped_no_price': 'WARNING: {n} more flights were excluded because Google listed no fare: {detail}.\n'
+                                '   This is NOT "no flights" - those departures exist, the price just is not '
+                                'available here. Check the airline website directly.',
             'nightly': 'Per night', 'total': 'Total', 'rating': 'Rating', 'hotel': 'Hotel',
             'note': 'Note',
             'total_hotels': '{n} hotels', 'median': 'median nightly', 'range': 'nightly range',
+            'small_sample': 'WARNING: only {n} hotels returned (18 is normal). The median is NOT usable '
+                            'as a market rate at this sample size - one outlier skews it entirely. '
+                            'Try a different spelling of the place name, or a nearby city.',
             'total_median': 'median {n}-night total',
             'omitted_dates': '{n} more dates are not listed, all pricier than the rows above — '
                              'the worst is {date} ({price}). When the question is which day is '
@@ -220,12 +270,16 @@ LOCALES = {
             'past_date': 'Error: {what} {date} is in the past (today is {today}).',
             'past_hint': 'If a month was given with no year and it has already passed, use next year.',
             'depart_date': 'departure date', 'start_date': 'start date',
-            'oneway': '{d} one-way',
+            # Measured: omitting the return date does NOT search one-way fares;
+            # Google still prices a round trip with a default return.
+            'oneway': '{d} outbound (no return date given; Google still prices a round trip)',
             'per_airline': 'querying {n} full-service carriers one by one',
             'filter_note': '(The airline filter applies to BOTH legs, so you will not get a '
                            'full-service outbound paired with a budget return.)',
             'no_route': '(no data - check place names and dates, or no full-service carrier flies this route)',
-            'no_flights_for': 'no flights/no data: ',
+            'no_flights_for': 'no rows came back for these - could be no flights, an '
+                              'unresolved query, or an intermittent empty response; '
+                              'not a conclusion: ',
             'stay_flight': '{n}-night stay', 'stay_hotel': '{n} nights',
             'scanning': 'Scanning {title}: {start} ~ {end} ({n} dates, {w} parallel)',
             'scan_hotel_note': '(Hotels ranked by MEDIAN nightly rate - the cheapest listing is '
@@ -269,19 +323,36 @@ LOCALES = {
         'full_service': ['チャイナ エアライン', 'エバー航空', 'スターラックス航空', '日本航空',
                          '全日空', 'キャセイパシフィック航空', 'アシアナ航空', '大韓航空',
                          'タイ国際航空', 'シンガポール航空'],
+        'full_service_eu': ['エティハド航空', 'エミレーツ航空', 'カタール航空', 'ターキッシュ エアラインズ',
+                            'スイス インターナショナル エアラインズ', 'ルフトハンザ ドイツ航空', 'KLMオランダ航空',
+                            'エールフランス航空', 'ブリティッシュ・エアウェイズ', 'チャイナ エアライン', 'エバー航空'],
         'ui': {
-            'no_data_flight': '(データなし — ①空港コードや日付の誤り ②レート制限 '
-                              '③約330日の予約可能範囲を超過、のいずれか。'
-                              '有効と分かっているクエリを再実行すれば②を切り分けられます)',
-            'no_data_hotel': '(データなし — ①地名や日付の誤り ②レート制限 '
-                             '③約330日の予約可能範囲を超過、のいずれか。'
-                             '有効と分かっているクエリを再実行すれば②を切り分けられます)',
+            'no_data_flight': '(データなし — ①空港コードや日付の誤り ②レート制限または'
+                              '間欠的な空応答 ③約330日の予約可能範囲を超過 ④クエリ文字列が'
+                              '検索可能な路線として解釈されなかった、のいずれか。実測では'
+                              '同一クエリでも約18%の確率で空が返るため、**同じクエリ**を'
+                              '2〜3回再実行してから判断してください——別の「有効と分かっている'
+                              'クエリ」では切り分けられません。④は次の行を参照)',
+            'resolved_as': 'Google が解釈したクエリ：{title}',
+            'query_failed': '⚠️ {airline} のクエリが失敗しました（{error}）——「便がない」のではなく、リクエスト自体が完了していません。',
+            'no_data_hotel': '(データなし — ①地名や日付の誤り ②レート制限または間欠的な'
+                             '空応答 ③約330日の予約可能範囲を超過、のいずれか。**同じクエリ**を'
+                             '2〜3回再実行して②を切り分けてください——別の「有効と分かっている'
+                             'クエリ」では切り分けられません)',
             'price': '料金', 'airline': '航空会社', 'outbound': '往路', 'route': '発着',
             'stops': '経由', 'duration': '所要時間', 'nonstop': '直行', 'connecting': '経由',
             'total_n': '{n} 件', 'lowest': '最安',
+            'truncated': '\n※ 上表は安い順に {shown} 件のみ。他に {n_more} 件あります。'
+                         '価格順のため直行便・フルサービス系は後ろに回されます。'
+                         '上表から「直行便が何件あるか」を数えないでください。全件は --top 60（GFH_TOP=60）。',
+            'dropped_no_price': '⚠️ 運賃が取得できず除外された便が {n} 件あります：{detail}。\n'
+                                '   これは「便がない」という意味では**ありません**。'
+                                '便は存在し、運賃だけが取得できていません。航空会社の公式サイトで確認してください。',
             'nightly': '1泊料金', 'total': '総額', 'rating': '評価', 'hotel': 'ホテル',
             'note': '備考',
             'total_hotels': '{n} 軒', 'median': '1泊料金の中央値', 'range': '1泊料金の範囲',
+            'small_sample': '⚠️ {n} 軒しか返っていません（通常 18 軒）。この標本数では'
+                            '**中央値を相場として使えません**。地名の表記を変えるか、近隣の都市で再検索してください。',
             'total_median': '{n}泊総額の中央値',
             'omitted_dates': '他に {n} 件の日付があり、いずれも上表より高額です——最も高いのは '
                              '{date}（{price}）。「どの日が安いか」を問うとき、避けるべき日も答えの半分です。',
@@ -298,12 +369,15 @@ LOCALES = {
             'past_date': 'エラー：{what} {date} は過去の日付です（今日は {today}）。',
             'past_hint': '年を伴わない月の指定で、その月が既に過ぎている場合は翌年を使ってください。',
             'depart_date': '出発日', 'start_date': '開始日',
-            'oneway': '{d} 片道',
+            # 実測：復路日を省いても片道運賃にはならず、Google は既定の復路を
+            # 付けて往復として計算します。
+            'oneway': '{d} 出発（復路日なし。Google は往復として計算）',
             'per_airline': 'フルサービス航空 {n} 社を個別に検索',
             'filter_note': '（航空会社フィルタは往復**両方**に適用されるため、'
                            '往路のみ大手・復路LCCという混在は起きません）',
             'no_route': '(データなし — 地名と日付を確認、またはこの路線にフルサービス便がありません)',
-            'no_flights_for': '便なし/データなし：',
+            'no_flights_for': 'これらは結果が返りませんでした——便がない場合のほか、'
+                              'クエリ未解決や間欠的な空応答の可能性もあり、結論にしないこと：',
             'stay_flight': '{n} 泊', 'stay_hotel': '{n} 泊',
             'scanning': 'スキャン {title}：{start} ~ {end}（{n} 日分、並列 {w}）',
             'scan_hotel_note': '（ホテルは「当日料金の中央値」順 — 最安値はゲストハウスが多く相場を表しません）',

@@ -100,6 +100,28 @@ def as_page(labels):
     return '<html><body>' + ''.join(noise) + body + '</body></html>'
 
 
+# --- 頁面標題（查詢解析診斷用）--------------------------------------------
+# 0 筆結果時，<title> 是唯一能分辨「真的沒航班」與「查詢沒被解析」的線索。
+# 實測到三種形態，這裡照那三種**結構**合成（地名一律虛構，見檔頭規矩）：
+#   1. 解析成功  -> 「A到B | <服務名>」
+#   2. 解析成行政區 -> 同樣是「A到B」，但後綴換成探索頁，且 B 是縣/州層級
+#   3. 完全沒解析 -> 整個換成服務首頁的通用標題，句中沒有任何地名
+# 真實觀測到的字串記在 SKILL.md，不複製進 repo。
+TITLES = {
+    'resolved': '範例市到樣本市 | 範例航班服務',
+    'region': '範例市到樣本縣 | 探索',
+    'unparsed': '搜尋便宜航班並預訂機票 - 範例航班服務',
+}
+
+
+def with_title(labels_or_page, title=None):
+    """在頁面加上 <title>。傳入 label 清單或已組好的 HTML 都可以。"""
+    page = labels_or_page if isinstance(labels_or_page, str) else as_page(labels_or_page)
+    if title is None:
+        return page
+    return page.replace('<html>', f'<html><head><title>{title}</title></head>', 1)
+
+
 # --- 飯店總價 --------------------------------------------------------------
 # 總價不在 aria-label 裡，而在一般文字節點，且節點不帶飯店名。以下格式全部實抓確認
 # （ja 用的是全形 ￥ U+FFE5，不是 ¥ U+00A5）。class 名刻意寫成無意義的 a/b —— parser
