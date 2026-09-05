@@ -26,7 +26,7 @@ rebuilding it into your own table.
 
 ```bash
 scripts/gflight.sh Taipei Tokyo 2026-10-01 2026-10-05   # round trip (city names cover all airports)
-scripts/gflight.sh TPE KIX 2026-11-15                   # one way (omit return; codes pin one airport)
+scripts/gflight.sh TPE KIX 2026-11-15                   # return date omitted (NOT a one-way fare - see traps)
 scripts/gflight.sh Taipei Osaka 2026-03-15 2026-03-20 "EVA Air"   # one airline at a time
 python3 scripts/gnolcc.py Taipei Osaka 2026-03-15 2026-03-20      # exclude budget carriers (see traps)
 scripts/ghotel.sh Kanazawa 2026-11-24 2026-11-26 2      # place, check-in, check-out, adults
@@ -44,9 +44,13 @@ City codes cover multiple airports: `TYO` = Narita + Haneda, `OSA` = Kansai + It
 **Watch out for cities whose code does not cover every airport.** Measured example: `TPE` covers
 only Taoyuan, not Songshan (`TSA`). Querying Taipei→Tokyo with `TPE` returned 24 results; using the
 city name returned 32 — the extra 8 departed from the close-in city airport with better timings.
-Both arguments go straight into the query string, so **plain city names work fine and are usually
-safer than hunting for airport codes**; use codes only when the user explicitly wants one airport.
-The same applies to hotel locations — a place name is enough, no IDs to look up.
+Both arguments go straight into a natural-language query string, so **codes and place names both
+work — and either can fail to parse and silently return zero rows**. An earlier copy of this file
+said plain city names are "safer than hunting for airport codes"; that understated the risk.
+Measured: `熊本` resolves to Kumamoto *Prefecture* and returns nothing, while `熊本市` and `KMJ`
+both work. Read "Zero rows does not mean no flights" below before you conclude anything from an
+empty result. Hotel locations likewise need no IDs, but be aware the place string is a loose match
+rather than a geographic area (also in the traps).
 
 **Passenger count is an approximation.** The text query interface ignores passenger parameters —
 writing "for 2 adults" into `q=` has no effect, and what comes back is always the single-traveller
@@ -209,6 +213,134 @@ parsed, confirm the page has finished loading before you start comparing prices.
 
 ## Traps (these produce wrong prices with no error at all)
 
+### Zero rows does not mean no flights
+
+`gflight.sh` assembles a natural-language sentence for Google (`Flights from A to B on C through D
+E`), so **what decides the outcome is whether the whole sentence parses** — not whether you used a
+code or a place name. When it fails to parse, Google returns 200 and an empty results page, which
+looks exactly like a route with no flights.
+
+Measured 2026-09-02, Taipei→Kumamoto, 9/12-9/16:
+
+| Query | Page title | Rows |
+|---|---|---|
+| `臺北市 熊本市` | Taipei to Kumamoto City \| Google Flights | 6 |
+| `臺北市 熊本` | Taipei to Kumamoto **Prefecture** \| **Explore** | **0** |
+| `TPE KMJ` | Taipei to Kumamoto City \| Google Flights | 6 |
+| `TPE KMJ 中華航空` | Taipei to Kumamoto City \| Google Flights | 4 |
+| `TPE KMJ 星宇航空` | generic "search cheap flights" **home-page title** | **0** |
+
+`熊本` resolved to the *prefecture*, which Flights cannot search, so the request landed on the
+Explore page; `TPE KMJ 星宇航空` never parsed at all and fell back to the home page. Neither is
+"no flights". Note this overturns the intuitive reading: the problem is not codes vs. names — all
+four endpoint spellings (`TPE`/`臺北市` × `KMJ`/`熊本市`) returned 6 rows on their own.
+
+**The script now prints the diagnosis at the point of failure**: on zero rows it adds a line, "What
+Google resolved the query to: …", carrying the page title. A prefecture/state/county, or the generic
+home-page title, means the query did not parse — rephrase and retry (add the city suffix, switch to
+an airport code, or write the airline name in another language).
+
+**And the same query re-run does not return the same thing.** Measured: `TPE KMJ 中華航空` returned
+zero rows on 2 of 11 runs (~18%), and a differently-worded "known-good" control query **passes**
+during those failures. So the old advice — "re-run a query known to work to tell throttling apart" —
+cannot tell them apart at all. Before concluding anything is absent, re-run **the same query** 2-3
+times.
+
+This flake has a nastier consequence: **it manufactures false documentation.** The `China Airlines`
+claim corrected above got in exactly this way — someone tested once and hit the 18%. Any conclusion
+of the form "measured: X returns zero rows" **needs a sample size greater than one**.
+
+### A fifth kind of zero: the flights exist, the fares do not
+
+None of the four causes above covers this one, and it looks **exactly like a fully
+successful query**: the page title is normal and the flight rows are there — each row's
+aria-label just starts with "no total price available". `gfparse.py` treats price as a hard
+filter, so those rows are dropped wholesale and **an entire airline can vanish**.
+
+Measured (2026-09-05, Tokyo to Sapporo, 2027-03-04/09): 38 aria-labels mention ANA, more
+than JAL, yet **not one ANA row** survives parsing. Filtering the query to ANA drops all 62
+rows (ANA 38 + AIRDO 24) and prints just "(no data)" — while the four reasons that message
+lists are **all wrong**, and the title diagnostic reports a successful parse, steering you
+toward "probably throttling".
+
+**The scripts now warn**: the drop tally prints at the **top** of the output (especially on
+zero rows), e.g. "38 more flights excluded because Google listed no fare: ANA 38". That
+means the departures exist and only the price is missing — check the airline's own site,
+and do **not** report "no flights found".
+
+### Omitting the return date does not search one-way fares, and cannot do open-jaw
+
+`gflight.sh A B departure` with no return date is **not** a one-way search. Measured
+Taipei→Kumamoto: one-way 9/12 and round-trip 9/12-9/16 both returned 6 rows with the same
+NT$9,272 minimum — Google supplies a default return and still prices a round trip.
+
+The consequence: anyone building an open-jaw itinerary (different in and out, say into Kumamoto and
+out of Fukuoka) from two "one-way" queries is adding up **two round-trip fares**, wildly wrong with
+no visible sign. **This tool cannot price open-jaw or one-way**; those need the airline's own site
+or an OTA multi-city search.
+
+### The hotel place parameter is a loose match, and a brand name does not filter
+
+`ghotel.sh 新大阪 …` returned 17 properties including ones in Shinsaibashi, Namba, Tanimachi-yonchome,
+Kitashinchi and Hommachi — none of them in Shin-Osaka. The place string is a loose search match,
+**not a geographic radius**. So do not report results as "the going rate in district X"; list the
+property names and let the user judge.
+
+**Putting a brand name in the place parameter does no brand filtering**: `ghotel.sh "大阪 VIA INN" …`
+returned zero rows, and none of those 17 Shin-Osaka properties was a VIA INN. Enumerating a brand
+needs the procedure in "When the user says I have a membership with X" above.
+
+### Local place names may return nothing, and hotels give you no diagnostic
+
+Google's Chinese UI often uses mainland Chinese renderings. Measured 2027-03-04/09, 1 adult:
+`二世谷` (the Taiwanese name for Niseko) returns **0 hotels** three runs in a row, `新雪谷`
+(Google's Chinese) returns 10, and `ニセコ` (Japanese) returns 17. Europe is worse — the name
+can land on **a different city**: `ghotel.sh 華沙` (Warsaw) returns three hotels in Shanghai;
+only the English `Warsaw` works (19 rows). Every field is valid, just for the wrong city.
+
+**And the hotel title is no help**: all spellings produce a title that merely echoes the
+query. The flight-side diagnostic (is the title a prefecture / an explore page / the
+homepage?) does not exist here, so "re-run 2-3 times" is useless advice for a name error —
+it returns 0 every time.
+
+**What to do**: when hotels return 0 rows or look wrong, the second step is not a re-run,
+it is **another spelling** — native, English, and mainland-Chinese in turn. **Use Japanese
+kana for places in Japan and English names everywhere in Europe and the US.** Always give
+the user the local name alongside, or they will not find the property when booking.
+
+### Too few hotel rows means the median is unusable
+
+`ghotel.sh` normally returns 18. Obscure or colliding place names can return single digits,
+and **the output looks identical to an 18-row result**. Measured (European ski areas,
+2027-03-04/09, 1 adult): Ischgl returned 4 rows, median NT$43,327; St. Anton 8 rows,
+NT$14,283 — while Innsbruck the same week returned 19 rows at NT$3,962, an order of
+magnitude apart.
+
+With n=4 the median is just the mean of rows 2 and 3; one outlier destroys it. **Below 10
+rows the script now warns above the table**, and the median should be read as "this price
+point exists", never as a market rate.
+
+A separate issue: **a single query's median can be off by far more than the 5% quoted
+elsewhere in this file**. Krakow on identical dates returned 956 / 1,987 / 1,315 across
+three runs — the May and June ranges overlapped completely, so month-over-month ranking
+from this source is fiction. When comparing cities or months, **run each query 3 times and
+take the median**, and only trust differences of 2x or more. Expensive cities are steadier
+(Zurich: 4,713-4,752); cheap ones swing because hostels dominate.
+
+### Room type is never labelled, and the median can skew both ways
+
+Among those 17 Shin-Osaka properties was First Cabin Nishi-Umeda, a cabin-style property, at
+NT$1,314 — in the middle of a list of business hotels, with **no field marking it as anything
+other than a normal room**. Worse is the hybrid case: Hotel Abest Grande Okayama describes itself
+as a fusion of business hotel and cabin hotel, offering both Western rooms and cabin types, with
+the ladies' cabin having no private bath or toilet.
+
+So confirm the room type before treating a Google figure as "what that hotel costs". A peer session
+reported that on such hybrids the Google price lands on the capsule berth and understates a real
+single room by nearly 3× — **that specific figure is not reproduced here** (the same property showed
+NT$1,675 on re-test, not the NT$1,042 reported, on different dates so not directly comparable), but
+the hybrid operation itself is confirmed, which is reason enough to check the room type first.
+
 ### The hotel `checkin` / `checkout` parameters are fake
 
 The intuitive `?q=tokyo+hotels&checkin=2026-12-30&checkout=2027-01-03` **does not fail** — it
@@ -250,10 +382,12 @@ python3 scripts/gnolcc.py Taipei Osaka 2026-03-15 2026-03-20
 ```
 
 It pushes the airline name into the query string, where **Google applies the filter to both legs**.
-Two constraints: the name **must match the current interface language** (`China Airlines` returns
-zero results under `hl=zh-TW`, and the Chinese name returns zero under `GFH_LANG=en` — both
-verified), and only one airline can be filtered at a time, so the script queries each in turn and
-merges.
+Matching the current interface language is the safest habit, but it is **not** a hard rule: an
+earlier copy of this file claimed `China Airlines` returns zero results under `hl=zh-TW` and marked
+it "verified". Re-tested on 2026-09-02 that is **false** — Taipei→Kumamoto returned 5/5/5/0 rows
+across four runs, and `Starlux` worked too. That single zero was the intermittent empty response
+described below. The real constraint is that only one airline can be filtered at a time, so the
+script queries each in turn and merges.
 
 Measured on one round trip: the listing showed one carrier at 11,711, which was really that carrier outbound
 plus a budget airline back; a genuine both-legs round trip was 13,819. That gap is enough to invert
@@ -309,6 +443,30 @@ Queries more than 300 days out print an advisory. That threshold is deliberately
 point where data disappears, because between 300 and 330 days the results merely thin out — and a
 shrinking sample is much easier to mistake for a real price signal than an empty one is.
 
+### For long-haul (Taipei to Europe/US) the first screen is unusable; prices can be off 2-4x
+
+The note above says "the row count is itself information", but on long-haul routes a low
+count is not merely thin supply — **the few rows you do get are themselves wrong**.
+Measured 2026-09-05:
+
+| Route | curl first screen | Full browser result | Gap |
+|---|---|---|---|
+| Taipei to Warsaw | 2 rows, from NT$59,213 (China Airlines+Condor, 29h) | 12 rows, from NT$28,019 (Etihad, 18h) | **2.1x** |
+| Taipei to Stockholm | NT$110,374 | NT$27,310 | **4x** |
+
+The failure is silent: price, carrier and duration all look perfectly normal.
+
+**Tell-tale sign**: every row in the batch shares the **same carrier and the same departure
+time**, and the duration is far above what the route normally takes (Taipei to Europe with
+one stop is normally 17-20h; 25-30h is a red flag). In this skill's field notes, Taipei to
+Geneva returned 2 rows on all five dates, all "China Airlines, Condor", 25-30h — that is
+the fingerprint.
+
+**What to do**: for long-haul, **skip `gflight.sh` and drive Google Flights in a browser**
+(`https://www.google.com/travel/flights?q=Flights from A to B on YYYY-MM-DD through YYYY-MM-DD&curr=TWD&hl=en&gl=us`),
+pulling the block between "search results" and "view more flights" from
+`document.body.innerText`. Short-haul (Japan, Korea) is unaffected, and so is `ghotel.sh`.
+
 ### Google is not the whole market
 
 Google lists partners it has deals with. Flash sales on budget carriers' own sites and many regional
@@ -316,6 +474,15 @@ OTAs never appear. "Cheapest on Google" is not "cheapest available". Say so when
 or the user is clearly comparison shopping — do not let them believe they have seen every option.
 
 ### Only the first screen
+
+**Two different numbers: how many were parsed, how many were printed.** `gflight.sh` and
+`gnolcc.py` print only the **12 cheapest** by default, but the trailing "N results" line is
+the **full parsed count**. Results are sorted by price, and nonstops and full-service
+carriers tend to be pricier, so they get **systematically pushed past the cutoff** — never
+count "how many nonstops" from the printed table. Measured failure: a 12-row table gave
+"only 2 nonstops left on 1/20"; a full re-check showed 32, and that wrong conclusion shipped
+to the user. Pass `--top 60` (`gnolcc.py`) or `GFH_TOP=60` (`gflight.sh`) to count. The
+output warns when it truncates.
 
 `curl` returns the server-rendered first screen: roughly 20-24 flights, 18-20 hotels. That is
 entirely sufficient for price discovery and date comparison, but it is not the full list. When the
@@ -363,12 +530,19 @@ is not in version control, so the published skill assumes no particular skill ec
 - **"date is in the past"** — the script blocks this and states the reason. Usually the user gave a
   month with no year, that month has already passed this year, and it was resolved to this year
   anyway. Re-run with next year.
-- **"(no data)"** with no error message — check airport codes and place spelling; dates must be
-  `YYYY-MM-DD`.
+- **"(no data)"** with no error message — **read the line under it first, "What Google resolved the
+  query to:"**. That is the page title and it tells you what Google understood. A prefecture/state,
+  or the generic home-page title, means the query never parsed — it is not "no flights". Then re-run
+  **the same query** 2-3 times (~18% intermittent empty responses). Only after that check codes,
+  place spelling and the `YYYY-MM-DD` date format. See "Zero rows does not mean no flights".
 - **Some dates return nothing during a scan** — the script warns that this may be throttling rather
   than genuinely sold out. Concurrency is capped at 6 as a courtesy to the source. If it persists,
   narrow the range and run in batches. **Do not tell the user "there are no flights on those days"** —
   that is usually false.
+- **A whole batch loop returns empty** — check your shell first. `set -- $var` word-splits in bash
+  but **not in zsh**, so both dates arrive as a single argument and every query comes back empty,
+  looking exactly like no data. Three independent sessions hit this. Use `while read -r a b`, or
+  run the loop explicitly under `bash -c`.
 - **Prices look implausible** (New Year cheaper than a weekday) — the classic symptom of dates not
   taking effect. Check whether a URL was assembled by hand instead of going through the scripts.
 

@@ -108,6 +108,11 @@ def render(rows, lang=None, symbol=None, expect_nights=0):
     out = []
     if expect_nights and nights and nights != expect_nights:
         out.append(U['nights_mismatch'].format(want=expect_nights, got=nights) + '\n')
+    # 樣本數過小時中位數不可用，但輸出格式與 18 間時一模一樣、毫無視覺差異。
+    # 實測歐洲雪場村 Ischgl 只回 4 間、中位數 NT$43,327，而同期因斯布魯克 19 間
+    # 只要 NT$3,962——差一個數量級，卻沒有任何欄位提示前者不可信。
+    if len(rows) < 10:
+        out.append(U['small_sample'].format(n=len(rows)) + '\n')
 
     head = P(U['nightly'], 11, '>') + '  '
     if has_total:

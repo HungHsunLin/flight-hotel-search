@@ -128,3 +128,92 @@ TPE→TYO 一組來回日期，某全服務航空去程 + 某廉航回程：
 這層要花 15 秒左右，還會開瀏覽器。使用者只是在抓預算、比日期、看行情時，不要主動跑——直接給 `curl` 的結果就好。
 
 值得跑的時機很明確：使用者準備下訂了、明確問「官網比較便宜嗎」、或金額大到值得為幾百塊多花一分鐘確認。
+
+## 飯店品牌的直接資料來源（繞過瀏覽器）
+
+以下都是 2026-09-02 在本機實測的結果。**沒有實測到的部分明確標為未驗證**，不要當事實引用。
+
+### Dormy Inn 系：公開 JSON API，不需要任何 token
+
+```
+https://dormy-hotels.com/reserve/api/hotels
+  ?keyword=&keyword_reference=&checkin=2026/09/12
+  &number_of_nights=1&number_of_rooms=1&search_by_tag=hotel
+  &tags=&brands=&order_by=&stock_check=true
+  &number_of_adults[]=1
+  &number_of_children_need_futons[]=0&number_of_children_no_need_futons[]=0
+  &page=1
+```
+
+回 `{message, data:{total, per_page:10, data:[…], next_page}}`。實測 `total` 為 145~146
+（全品牌，含 野乃、ラビスタ），一頁 10 筆，所以 15 個請求可取全量。
+
+**最有價值的是 `inventories`**：它不是只回你問的那幾晚，而是自 `checkin` 起算約兩週的
+逐日房價與剩房數。一次呼叫就能算出整段期間的所有窗口，不必逐組日期查。
+
+**但回應 schema 由參數完整度決定——這是個會讓 parser 安靜壞掉的坑：**
+
+| 送出的參數 | `inventories` 型別 | 筆數 | 日期鍵 |
+|---|---|---|---|
+| 上列完整參數 | `list` | 15 | `month_day: '09/12'` |
+| 少送任何一個 | `dict` | 14 | ISO 日期 `'2026-09-12'` |
+
+實測是決定性的（各跑 3 次，3/3 一致），而且**沒有任何單一參數能翻轉它**——逐一補回
+`keyword_reference` / `tags` / `brands` / `order_by` / 兩個 `children[]` 都仍是 dict，
+六個全補齊才變回 list。所以：**照上面那份完整參數送**，同時 parser 兩種都要處理。
+
+`list` 形態每筆長這樣：
+```json
+{"day_name":"土","month_day":"09/12","year":"2026","icon":"circle",
+ "price":29850,"number_of_room_remain":"残り18部屋から表示","stock":18,
+ "is_holiday":0,"is_available":true}
+```
+
+**兩條 peer 回報的坑，本檔案複驗不成立**（記在這裡，免得後人照著繞路）：
+
+- 「`keyword=` 靜默失效」——實測**有效**：`keyword=熊本` 回 `total=3`，三筆全是熊本県
+  （六花の湯ドーミーイン熊本、御宿 野乃熊本、ラビスタ南阿蘇）。
+- 「`stock_check=false` 會讓所有 price 變 0，看起來像整區滿房」——實測 `true` 與 `false`
+  回傳的價格**逐筆相同**（29850 / 9450 / 18720 …）。
+- 「curl 必須加 `--globoff`，否則方括號被當 glob 而不發請求」——實測加不加都拿到相同
+  的 103200 bytes。加上去無害，但它不是本機失敗的原因。
+
+差異可能來自對方組 URL 的方式，不代表對方看錯；只是**照本節這份 URL 不會踩到**。
+
+### tripla（VIA INN、大和ROYNET 共用）：需要 client-session JWT
+
+直接打會被擋，實測回應：
+
+```
+HTTP 400
+{"data":null,"errors":[{"title":"You don't have permission to access this",
+ "details":{"system":[{"error":"You don't have permission to access this","code":1000}]}}]}
+```
+
+（另一個 session 回報的訊息是 `Client-Session is required`，與本機看到的不同——推測隨端點
+或版本而異。）
+
+**未驗證**：JWT 可從瀏覽器載入官網訂房頁攔 request header 取得（匿名、不需登入）、品牌分館
+清單端點 `hotel_brands/{id}/hotels`、以及 VIA INN=1152 / 大和ROYNET=95 這兩個 brand id。
+要用之前請自行驗證。
+
+### 大和ROYNET 館別 code
+
+```bash
+curl -s https://www.daiwaroynet.jp/<slug>/ | grep -oE 'value="[0-9a-f]{32}"' | sort -u | head -1
+```
+
+訂房 URL 的館別參數名是 `code=`，不是 `hotel_id=`——**未驗證**（peer 回報用錯參數名會導向
+推薦頁並顯示「未能搜到有空房」，也就是產生一個看起來完全合理的假滿房結論）。
+
+peer 另外警告「不限定 `value=` 直接抓 32 hex 會在多館之間抓到同一個共用字串」——在
+`hakata-gion` 上**複驗不成立**：限定與不限定兩種寫法抓到的前三筆完全相同。
+
+### 會員制度的歸屬必須查證，不能從母公司推論
+
+ヴィアイン 由 **株式会社JR西日本ヴィアイン**（ジェイアール西日本デイリーサービスネット
+100% 子公司）經營，**不屬於 JRホテルグループ，也不屬於 JR西日本ホテルズ**，只是偶爾聯合
+行銷。ヴィアインメンバーズクラブ 與 JRホテルメンバーズ 是兩套獨立的會員制度。
+
+一般規則：**同集團 ≠ 同會員制度**。使用者說「我有 X 的會員」時，能不能涵蓋 Y 品牌要實際
+查證，從母公司關係推論會推錯。
